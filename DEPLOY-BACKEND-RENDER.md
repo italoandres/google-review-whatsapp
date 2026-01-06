@@ -12,11 +12,26 @@
 
 **Problema:** Em produção, `__dirname` aponta para `dist/database`, mas o `schema.sql` está em `src/database`.
 
-**Solução:** Alterado `backend/src/database/init.ts` para usar `process.cwd()`:
+**Solução:** Alterado `backend/src/database/init.ts` para detectar automaticamente o contexto:
 
 ```typescript
-const schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
+// Detectar se estamos na pasta backend ou na raiz do projeto
+const cwd = process.cwd();
+const isInBackendFolder = cwd.endsWith('backend') || cwd.includes('backend\\') && !cwd.includes('backend\\backend');
+
+// Construir caminho correto baseado no contexto
+const schemaPath = isInBackendFolder
+  ? path.join(cwd, 'src', 'database', 'schema.sql')
+  : path.join(cwd, 'backend', 'src', 'database', 'schema.sql');
 ```
+
+**Funciona em:**
+- ✔️ Local (executando de dentro da pasta backend)
+- ✔️ Local (executando da raiz do projeto)
+- ✔️ Render (Root Directory = backend)
+- ✔️ Render (Root Directory = .)
+- ✔️ Não depende de build
+- ✔️ Não exige cópia manual
 
 Agora funciona tanto localmente quanto em produção! ✅
 

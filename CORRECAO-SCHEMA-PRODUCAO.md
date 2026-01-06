@@ -30,13 +30,21 @@ const schemaPath = path.join(__dirname, 'schema.sql');
 
 **Código Novo (CORRETO):**
 ```typescript
-const schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
+// Detectar se estamos na pasta backend ou na raiz do projeto
+const cwd = process.cwd();
+const isInBackendFolder = cwd.endsWith('backend') || cwd.includes('backend\\') && !cwd.includes('backend\\backend');
+
+// Construir caminho correto baseado no contexto
+const schemaPath = isInBackendFolder
+  ? path.join(cwd, 'src', 'database', 'schema.sql')
+  : path.join(cwd, 'backend', 'src', 'database', 'schema.sql');
 ```
 
 **Por quê funciona:**
-- `process.cwd()` retorna o diretório raiz do projeto
-- Em produção no Render: `/opt/render/project/src/backend`
-- Caminho final: `/opt/render/project/src/backend/src/database/schema.sql` ✅
+- Detecta automaticamente se está rodando de dentro da pasta `backend/` ou da raiz
+- Se estiver em `backend/`: usa `src/database/schema.sql`
+- Se estiver na raiz: usa `backend/src/database/schema.sql`
+- Funciona em Windows, Mac, Linux e ambientes de produção ✅
 
 ## Código Completo Atualizado
 
