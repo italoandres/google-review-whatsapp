@@ -1,0 +1,126 @@
+================================================================================
+  SISTEMA DE SOLICITAÇÃO DE AVALIAÇÕES GOOGLE VIA WHATSAPP
+================================================================================
+
+Olá! Este é um sistema simples para você solicitar avaliações do Google
+para seus clientes via WhatsApp, de forma manual e segura.
+
+================================================================================
+  INSTALAÇÃO RÁPIDA (WINDOWS)
+================================================================================
+
+1. Instale o Node.js:
+   - Baixe em: https://nodejs.org/
+   - Escolha a versão LTS (recomendada)
+   - Execute o instalador
+   - Clique em "Next" até finalizar
+
+2. Instale o sistema:
+   - Duplo-clique no arquivo: install.bat
+   - Aguarde (pode levar 5-10 minutos)
+   - Quando aparecer "Instalação concluída", pressione qualquer tecla
+
+3. Inicie o sistema:
+   - Duplo-clique no arquivo: start.bat
+   - Duas janelas vão abrir (NÃO FECHE ELAS!)
+   - Aguarde alguns segundos
+   - Seu navegador vai abrir automaticamente
+   - Se não abrir, acesse: http://localhost:5173
+
+================================================================================
+  PRIMEIRO USO
+================================================================================
+
+1. CRIAR CONTA
+   - Clique em "Criar conta"
+   - Digite seu email
+   - Digite uma senha (mínimo 6 caracteres)
+   - Clique em "Criar Conta"
+
+2. CONFIGURAR SEU NEGÓCIO
+   - Nome do Negócio: Digite o nome da sua empresa
+   - Número do WhatsApp: Digite assim: 5511999999999
+     (55 = Brasil, 11 = DDD, 999999999 = seu número)
+   - Link do Google: Cole o link de avaliação do Google My Business
+     (Veja o arquivo: COMO-OBTER-LINK-GOOGLE.md)
+   - Mensagem Padrão: Personalize a mensagem
+     (Veja exemplos em: EXEMPLOS-MENSAGENS.md)
+   - Clique em "Salvar e Continuar"
+
+3. CADASTRAR CLIENTES
+   - Clique em "+ Novo Cliente"
+   - Nome: Digite o nome (opcional)
+   - Telefone: Digite assim: 5511999999999
+   - Marque "Cliente satisfeito" se ele gostou
+   - Marque "Cliente reclamou" se ele reclamou (bloqueia avaliação)
+   - Clique em "Cadastrar Cliente"
+
+4. SOLICITAR AVALIAÇÃO
+   - Na lista, encontre um cliente com status "Apto"
+   - Clique no botão "📱 Pedir Avaliação"
+   - O WhatsApp vai abrir com a mensagem pronta
+   - VOCÊ precisa clicar em "Enviar" no WhatsApp
+   - O status do cliente muda para "Avaliação Solicitada"
+
+================================================================================
+  IMPORTANTE
+================================================================================
+
+✅ O sistema NÃO envia mensagens automaticamente
+✅ Você controla cada envio manualmente
+✅ Não usa WhatsApp API (sem risco de bloqueio)
+✅ Funciona em computador, tablet e celular
+✅ Seus dados ficam salvos no seu computador
+
+================================================================================
+  PROBLEMAS?
+================================================================================
+
+ERRO AO CRIAR CONTA OU FAZER LOGIN
+- Duplo-clique em: corrigir.bat
+- Aguarde a conclusão
+- Execute start.bat novamente
+
+ERRO AO CADASTRAR CLIENTE
+- Mesmo procedimento acima
+- Ou verifique o formato do telefone: 5511999999999
+
+BACKEND NÃO INICIA
+- Feche outros programas que usam porta 3000
+- Execute install.bat novamente
+
+FRONTEND NÃO CONECTA
+- Certifique-se que o backend está rodando
+- Não feche as janelas que abriram
+
+TELEFONE INVÁLIDO
+- Use formato: 5511999999999
+- Não use espaços, parênteses ou traços
+
+WHATSAPP NÃO ABRE
+- Permita pop-ups no navegador
+- Instale WhatsApp ou abra WhatsApp Web
+
+PARA MAIS DETALHES:
+Veja o arquivo: CORRIGIR-ERROS.md
+
+================================================================================
+  ARQUIVOS ÚTEIS
+================================================================================
+
+README.md                    - Documentação completa (técnica)
+GUIA-RAPIDO.md              - Guia rápido de uso
+COMO-OBTER-LINK-GOOGLE.md   - Como pegar o link do Google
+EXEMPLOS-MENSAGENS.md       - 10 exemplos de mensagens prontas
+CHECKLIST-INSTALACAO.md     - Checklist de verificação
+
+================================================================================
+  SUPORTE
+================================================================================
+
+Dúvidas? Leia os arquivos acima ou entre em contato com quem forneceu
+este sistema para você.
+
+================================================================================
+  BOA SORTE! 🚀
+================================================================================

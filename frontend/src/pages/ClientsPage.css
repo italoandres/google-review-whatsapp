@@ -1,0 +1,100 @@
+.clients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.clients-header h1 {
+  font-size: 28px;
+  color: #333;
+}
+
+.clients-table-container {
+  background: white;
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.clients-table thead {
+  background-color: #f8f9fa;
+}
+
+.clients-table th {
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.clients-table td {
+  padding: 16px;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 14px;
+}
+
+.clients-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-apto {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-bloqueado {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-solicitado {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .clients-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .clients-header h1 {
+    font-size: 24px;
+  }
+
+  .clients-table-container {
+    overflow-x: scroll;
+  }
+
+  .clients-table {
+    min-width: 800px;
+  }
+
+  .clients-table th,
+  .clients-table td {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+}
