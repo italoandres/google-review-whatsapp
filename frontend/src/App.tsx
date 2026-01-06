@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import SetupPage from './pages/SetupPage';
@@ -6,7 +6,6 @@ import ClientsPage from './pages/ClientsPage';
 import ConfigPage from './pages/ConfigPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
-import { businessApi } from './services/api';
 
 const App: React.FC = () => {
   return (

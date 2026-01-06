@@ -357,6 +357,34 @@ MIT
 - **[GUIA-RAPIDO.md](GUIA-RAPIDO.md)** - Guia rápido de instalação e uso
 - **[COMO-OBTER-LINK-GOOGLE.md](COMO-OBTER-LINK-GOOGLE.md)** - Como obter o link de avaliação do Google
 - **[EXEMPLOS-MENSAGENS.md](EXEMPLOS-MENSAGENS.md)** - 10 exemplos de mensagens prontas para usar
+- **[CORRECOES-TYPESCRIPT.md](CORRECOES-TYPESCRIPT.md)** - Correções aplicadas para build TypeScript
+- **[DEPLOY-NETLIFY.md](DEPLOY-NETLIFY.md)** - Guia completo de deploy do frontend no Netlify
+- **[DEPLOY-BACKEND-RENDER.md](DEPLOY-BACKEND-RENDER.md)** - Guia completo de deploy do backend no Render
+
+## 🚀 Deploy em Produção
+
+### Frontend (Netlify)
+
+Para fazer deploy do frontend no Netlify, consulte: **[DEPLOY-NETLIFY.md](DEPLOY-NETLIFY.md)**
+
+**Resumo rápido:**
+1. Conecte seu repositório ao Netlify
+2. Configure: Base directory = `frontend`, Build command = `npm run build`, Publish directory = `frontend/dist`
+3. Adicione variável de ambiente: `VITE_API_URL` = URL do seu backend
+4. Deploy automático a cada push!
+
+### Backend (Render)
+
+Para fazer deploy do backend no Render, consulte: **[DEPLOY-BACKEND-RENDER.md](DEPLOY-BACKEND-RENDER.md)**
+
+**Resumo rápido:**
+1. Crie Web Service no Render
+2. Configure: Root directory = `backend`, Build = `npm install && npm run build && npm run init-db`
+3. Adicione variáveis: `JWT_SECRET`, `DATABASE_PATH`, `NODE_ENV=production`
+4. Configure disco persistente para o banco de dados
+5. Atualize CORS no backend para aceitar domínio do frontend
+
+**⚠️ Correção Importante:** O caminho do `schema.sql` foi corrigido para funcionar em produção usando `process.cwd()` ao invés de `__dirname`.
 
 ## 👨‍💻 Suporte
 

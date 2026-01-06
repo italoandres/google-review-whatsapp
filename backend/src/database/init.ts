@@ -7,7 +7,11 @@ import db, { dbRun } from './connection';
  */
 export async function initDatabase(): Promise<void> {
   try {
-    const schemaPath = path.join(__dirname, 'schema.sql');
+    // Usar process.cwd() para funcionar em produção (Render, Heroku, etc)
+    // Em produção, __dirname aponta para dist/database, mas o schema.sql está em src/database
+    const schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
+    
+    console.log('📂 Lendo schema de:', schemaPath);
     const schema = fs.readFileSync(schemaPath, 'utf-8');
     
     // Dividir por ponto e vírgula e executar cada statement
