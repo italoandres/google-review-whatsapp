@@ -59,7 +59,9 @@ const AddClientForm: React.FC<AddClientFormProps> = ({ onClientAdded }) => {
       const axiosError = err as AxiosError<ErrorResponse>;
       const errorData = axiosError.response?.data;
 
-      if (errorData?.details) {
+      if (errorData?.error === 'PHONE_ALREADY_EXISTS') {
+        setErrors({ phone: 'Este telefone já está cadastrado.' });
+      } else if (errorData?.details) {
         setErrors(errorData.details);
       } else if (errorData?.field) {
         setErrors({ [errorData.field]: errorData.message });

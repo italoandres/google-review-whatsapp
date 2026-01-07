@@ -53,24 +53,44 @@
   font-weight: 500;
 }
 
-.status-apto {
+.status-not-sent {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.status-sent {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-reviewed {
   background-color: #d4edda;
   color: #155724;
-}
-
-.status-bloqueado {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-.status-solicitado {
-  background-color: #d1ecf1;
-  color: #0c5460;
 }
 
 .btn-sm {
   padding: 6px 12px;
   font-size: 13px;
+}
+
+.btn-success {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+}
+
+.btn-success:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

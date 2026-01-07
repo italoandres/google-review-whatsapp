@@ -4,7 +4,10 @@ import {
   getClientsByUserId, 
   getClientById, 
   createClient,
-  markClientAsRequested,
+  markClientAsSent,
+  markClientAsReviewed,
+  checkPhoneExists,
+  getMetrics,
   ClientInput 
 } from '../models/client';
 import { getBusinessByUserId } from '../models/business';
@@ -105,6 +108,17 @@ router.post('/', async (req: Request, res: Response) => {
       return;
     }
 
+    // Verificar se telefone já existe
+    const phoneExists = await checkPhoneExists(userId, phone);
+    if (phoneExists) {
+      res.status(400).json({
+        error: 'PHONE_ALREADY_EXISTS',
+        message: 'Este telefone já está cadastrado.',
+        field: 'phone'
+      });
+      return;
+    }
+
     // Validar booleans
     if (typeof satisfied !== 'boolean') {
       res.status(400).json({
@@ -145,7 +159,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 /**
  * POST /api/clients/:id/request-review
- * Gera link wa.me e marca cliente como solicitado
+ * Gera link wa.me e marca cliente como enviado
  */
 router.post('/:id/request-review', async (req: Request, res: Response) => {
   try {
@@ -171,11 +185,20 @@ router.post('/:id/request-review', async (req: Request, res: Response) => {
       return;
     }
 
-    // Verificar se cliente está apto
-    if (client.status !== 'apto') {
+    // Verificar se cliente está apto (NOT_SENT e não reclamou)
+    if (client.reviewStatus !== 'NOT_SENT') {
       res.status(400).json({
-        error: 'INVALID_STATUS',
-        message: `Cliente não está apto para receber solicitação (status: ${client.status})`
+        error: 'ALREADY_SENT',
+        message: 'Este cliente já recebeu o link de avaliação.'
+      });
+      return;
+    }
+
+    // Verificar se cliente reclamou
+    if (client.complained) {
+      res.status(400).json({
+        error: 'CLIENT_COMPLAINED',
+        message: 'Clientes que reclamaram não podem receber solicitação de avaliação.'
       });
       return;
     }
@@ -198,8 +221,8 @@ router.post('/:id/request-review', async (req: Request, res: Response) => {
       business.googleReviewLink
     );
 
-    // Atualizar status do cliente
-    const updatedClient = await markClientAsRequested(clientId, userId);
+    // Atualizar status do cliente para SENT
+    const updatedClient = await markClientAsSent(clientId, userId);
 
     res.json({
       waLink,
@@ -210,6 +233,76 @@ router.post('/:id/request-review', async (req: Request, res: Response) => {
     res.status(500).json({
       error: 'INTERNAL_ERROR',
       message: 'Erro ao solicitar avaliação'
+    });
+  }
+});
+
+/**
+ * POST /api/clients/:id/mark-reviewed
+ * Marca cliente como avaliado manualmente
+ */
+router.post('/:id/mark-reviewed', async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const clientId = parseInt(req.params.id);
+
+    if (isNaN(clientId)) {
+      res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: 'ID do cliente inválido'
+      });
+      return;
+    }
+
+    // Buscar cliente
+    const client = await getClientById(clientId, userId);
+
+    if (!client) {
+      res.status(404).json({
+        error: 'NOT_FOUND',
+        message: 'Cliente não encontrado'
+      });
+      return;
+    }
+
+    // Verificar se cliente recebeu o link (status SENT)
+    if (client.reviewStatus !== 'SENT') {
+      res.status(400).json({
+        error: 'INVALID_STATUS',
+        message: 'Apenas clientes que receberam o link podem ser marcados como avaliados.'
+      });
+      return;
+    }
+
+    // Marcar como avaliado
+    const updatedClient = await markClientAsReviewed(clientId, userId);
+
+    res.json(updatedClient);
+  } catch (error) {
+    console.error('Erro ao marcar cliente como avaliado:', error);
+    res.status(500).json({
+      error: 'INTERNAL_ERROR',
+      message: 'Erro ao marcar cliente como avaliado'
+    });
+  }
+});
+
+/**
+ * GET /api/clients/metrics
+ * Retorna métricas de envios e avaliações
+ */
+router.get('/metrics', async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const metrics = await getMetrics(userId);
+
+    res.json(metrics);
+  } catch (error) {
+    console.error('Erro ao buscar métricas:', error);
+    res.status(500).json({
+      error: 'INTERNAL_ERROR',
+      message: 'Erro ao buscar métricas'
     });
   }
 });

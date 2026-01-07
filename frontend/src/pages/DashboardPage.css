@@ -1,0 +1,161 @@
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.metrics-card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.metrics-card-header {
+  margin-bottom: 20px;
+}
+
+.metrics-card-header h2 {
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.metrics-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #007bff;
+}
+
+.metric-value-success {
+  color: #28a745;
+}
+
+.info-box {
+  background: #e7f3ff;
+  border-left: 4px solid #007bff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+}
+
+.info-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.info-content h3 {
+  font-size: 16px;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+.info-content ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.info-content li {
+  font-size: 14px;
+  color: #495057;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.conversion-card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.conversion-card h3 {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.conversion-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.conversion-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversion-label {
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.conversion-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #007bff;
+}
+
+.conversion-percentage {
+  color: #28a745;
+}
+
+.conversion-arrow {
+  font-size: 24px;
+  color: #999;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .conversion-stats {
+    flex-direction: column;
+  }
+
+  .conversion-arrow {
+    transform: rotate(90deg);
+  }
+
+  .info-box {
+    flex-direction: column;
+  }
+}

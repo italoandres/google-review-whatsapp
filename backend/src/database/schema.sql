@@ -27,9 +27,10 @@ CREATE TABLE IF NOT EXISTS clients (
   phone TEXT NOT NULL,
   satisfied BOOLEAN NOT NULL DEFAULT 0,
   complained BOOLEAN NOT NULL DEFAULT 0,
-  status TEXT NOT NULL CHECK(status IN ('apto', 'bloqueado', 'solicitado')),
+  review_status TEXT NOT NULL DEFAULT 'NOT_SENT' CHECK(review_status IN ('NOT_SENT', 'SENT', 'REVIEWED_MANUAL')),
+  sent_at DATETIME,
+  reviewed_at DATETIME,
   attendance_date DATETIME NOT NULL,
-  request_date DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -37,4 +38,5 @@ CREATE TABLE IF NOT EXISTS clients (
 -- Índices para melhorar performance
 CREATE INDEX IF NOT EXISTS idx_business_user_id ON business(user_id);
 CREATE INDEX IF NOT EXISTS idx_clients_user_id ON clients(user_id);
-CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);
+CREATE INDEX IF NOT EXISTS idx_clients_review_status ON clients(review_status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_user_phone ON clients(user_id, phone);

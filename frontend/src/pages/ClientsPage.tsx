@@ -41,6 +41,27 @@ const ClientsPage: React.FC = () => {
     }
   };
 
+  const handleMarkAsReviewed = async (client: Client) => {
+    const confirmed = window.confirm(
+      `Confirmar Avaliação\n\nVocê confirma que ${client.name || 'este cliente'} avaliou seu negócio no Google?\n\n⚠️ Esta ação não pode ser desfeita.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await clientsApi.markAsReviewed(client.id);
+      
+      // Atualizar lista de clientes
+      await loadClients();
+      
+      alert('✅ Cliente marcado como avaliado!');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Erro ao marcar cliente como avaliado');
+    }
+  };
+
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', {
@@ -60,13 +81,13 @@ const ClientsPage: React.FC = () => {
     return phone;
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (reviewStatus: string) => {
     const badges = {
-      apto: { text: 'Apto', className: 'status-apto' },
-      bloqueado: { text: 'Bloqueado', className: 'status-bloqueado' },
-      solicitado: { text: 'Avaliação Solicitada', className: 'status-solicitado' },
+      NOT_SENT: { text: '⬜ Não Enviado', className: 'status-not-sent' },
+      SENT: { text: '🟡 Enviado', className: 'status-sent' },
+      REVIEWED_MANUAL: { text: '🟢 Avaliado', className: 'status-reviewed' },
     };
-    const badge = badges[status as keyof typeof badges] || { text: status, className: '' };
+    const badge = badges[reviewStatus as keyof typeof badges] || { text: reviewStatus, className: '' };
     return <span className={`status-badge ${badge.className}`}>{badge.text}</span>;
   };
 
@@ -118,7 +139,8 @@ const ClientsPage: React.FC = () => {
                 <th>Telefone</th>
                 <th>Data Atendimento</th>
                 <th>Status</th>
-                <th>Data Solicitação</th>
+                <th>Data Envio</th>
+                <th>Data Avaliação</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -128,18 +150,34 @@ const ClientsPage: React.FC = () => {
                   <td>{client.name || '-'}</td>
                   <td>{formatPhone(client.phone)}</td>
                   <td>{formatDate(client.attendanceDate)}</td>
-                  <td>{getStatusBadge(client.status)}</td>
+                  <td>{getStatusBadge(client.reviewStatus)}</td>
                   <td>
-                    {client.requestDate ? formatDate(client.requestDate) : '-'}
+                    {client.sentAt ? formatDate(client.sentAt) : '-'}
                   </td>
                   <td>
-                    {client.status === 'apto' && (
+                    {client.reviewedAt ? formatDate(client.reviewedAt) : '-'}
+                  </td>
+                  <td>
+                    {client.reviewStatus === 'NOT_SENT' && !client.complained && (
                       <button
                         className="btn btn-primary btn-sm"
                         onClick={() => handleRequestReview(client)}
                       >
                         📱 Pedir Avaliação
                       </button>
+                    )}
+                    {client.reviewStatus === 'SENT' && (
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => handleMarkAsReviewed(client)}
+                      >
+                        ✅ Marcar como Avaliado
+                      </button>
+                    )}
+                    {client.complained && client.reviewStatus === 'NOT_SENT' && (
+                      <span style={{ color: '#999', fontSize: '0.9em' }}>
+                        Bloqueado (reclamou)
+                      </span>
                     )}
                   </td>
                 </tr>

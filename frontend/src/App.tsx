@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import SetupPage from './pages/SetupPage';
+import DashboardPage from './pages/DashboardPage';
 import ClientsPage from './pages/ClientsPage';
 import ConfigPage from './pages/ConfigPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,6 +21,17 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <SetupPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DashboardPage />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -46,11 +58,11 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Rota padrão - redirecionar para clientes */}
-        <Route path="/" element={<Navigate to="/clients" replace />} />
+        {/* Rota padrão - redirecionar para dashboard */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* Rota 404 */}
-        <Route path="*" element={<Navigate to="/clients" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );

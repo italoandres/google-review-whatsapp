@@ -47,13 +47,21 @@ frontend/dist
 
 ### 4. Configurar Variáveis de Ambiente
 
+⚠️ **CRÍTICO:** Esta variável é OBRIGATÓRIA para o frontend funcionar em produção.
+
 No painel do Netlify:
 
 1. Vá em "Site settings" → "Environment variables"
 2. Clique em "Add a variable"
 3. Adicione:
    - **Key:** `VITE_API_URL`
-   - **Value:** URL do seu backend (ex: `https://seu-backend.com/api`)
+   - **Value:** `https://google-review-whatsapp.onrender.com/api`
+
+**IMPORTANTE:**
+- ❌ NÃO use `localhost`, `127.0.0.1` ou IPs locais (`192.168.*`)
+- ✅ Use APENAS a URL pública do backend em produção
+- ✅ A URL deve terminar com `/api`
+- ✅ Deve começar com `https://` (não `http://`)
 
 ### 5. Deploy
 
@@ -84,6 +92,17 @@ Se o build falhar:
 
 **Erro: "VITE_API_URL is not defined"**
 - Solução: Configure a variável de ambiente no Netlify
+
+**Erro: "VITE_API_URL is required"**
+- Solução: A variável está vazia ou não foi configurada. Adicione no Netlify.
+
+**Erro: "Cannot use localhost or local IP in production"**
+- Solução: Você configurou `localhost`, `127.0.0.1` ou IP local (`192.168.*`) no Netlify
+- Configure com a URL pública do backend: `https://google-review-whatsapp.onrender.com/api`
+
+**Erro: "Network request failed" ou "Failed to fetch"**
+- Solução: Verifique se o backend está rodando e acessível
+- Verifique se o CORS está configurado corretamente no backend
 
 **Erro: "Node version mismatch"**
 - Solução: Verifique se o Node 18+ está configurado

@@ -1,6 +1,6 @@
 import { dbGet, dbAll, dbRun } from '../database/connection';
 
-export type ClientStatus = 'apto' | 'bloqueado' | 'solicitado';
+export type ReviewStatus = 'NOT_SENT' | 'SENT' | 'REVIEWED_MANUAL';
 
 export interface Client {
   id: number;
@@ -9,9 +9,10 @@ export interface Client {
   phone: string;
   satisfied: boolean;
   complained: boolean;
-  status: ClientStatus;
+  reviewStatus: ReviewStatus;
+  sentAt: string | null;
+  reviewedAt: string | null;
   attendanceDate: string;
-  requestDate: string | null;
   createdAt: string;
 }
 
@@ -22,17 +23,33 @@ export interface ClientInput {
   complained: boolean;
 }
 
+export interface Metrics {
+  sentToday: number;
+  sentWeek: number;
+  sentMonth: number;
+  reviewedWeek: number;
+  reviewedMonth: number;
+}
+
 /**
- * Calcula status do cliente baseado nas regras de negócio
+ * Calcula status inicial do cliente baseado nas regras de negócio
  */
-export function calculateClientStatus(complained: boolean, requestDate: string | null): ClientStatus {
-  if (complained) {
-    return 'bloqueado';
-  }
-  if (requestDate) {
-    return 'solicitado';
-  }
-  return 'apto';
+export function calculateInitialReviewStatus(complained: boolean): ReviewStatus {
+  // Clientes que reclamaram começam como NOT_SENT (bloqueados de receber link)
+  // Clientes satisfeitos começam como NOT_SENT (aptos para receber link)
+  return 'NOT_SENT';
+}
+
+/**
+ * Verifica se telefone já existe para o usuário
+ */
+export async function checkPhoneExists(userId: number, phone: string): Promise<boolean> {
+  const result = await dbGet(
+    `SELECT COUNT(*) as count FROM clients WHERE user_id = ? AND phone = ?`,
+    [userId, phone]
+  ) as { count: number };
+
+  return result.count > 0;
 }
 
 /**
@@ -42,9 +59,9 @@ export async function getClientsByUserId(userId: number): Promise<Client[]> {
   const clients = await dbAll(
     `SELECT 
       id, user_id as userId, name, phone, 
-      satisfied, complained, status,
+      satisfied, complained, review_status as reviewStatus,
+      sent_at as sentAt, reviewed_at as reviewedAt,
       attendance_date as attendanceDate, 
-      request_date as requestDate, 
       created_at as createdAt
     FROM clients 
     WHERE user_id = ?
@@ -67,9 +84,9 @@ export async function getClientById(clientId: number, userId: number): Promise<C
   const client = await dbGet(
     `SELECT 
       id, user_id as userId, name, phone, 
-      satisfied, complained, status,
+      satisfied, complained, review_status as reviewStatus,
+      sent_at as sentAt, reviewed_at as reviewedAt,
       attendance_date as attendanceDate, 
-      request_date as requestDate, 
       created_at as createdAt
     FROM clients 
     WHERE id = ? AND user_id = ?`,
@@ -92,12 +109,12 @@ export async function getClientById(clientId: number, userId: number): Promise<C
  * Cria novo cliente
  */
 export async function createClient(userId: number, data: ClientInput): Promise<Client> {
-  const status = calculateClientStatus(data.complained, null);
+  const reviewStatus = calculateInitialReviewStatus(data.complained);
   const attendanceDate = new Date().toISOString();
 
   const result = await dbRun(
     `INSERT INTO clients 
-      (user_id, name, phone, satisfied, complained, status, attendance_date) 
+      (user_id, name, phone, satisfied, complained, review_status, attendance_date) 
     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       userId,
@@ -105,7 +122,7 @@ export async function createClient(userId: number, data: ClientInput): Promise<C
       data.phone,
       data.satisfied ? 1 : 0,
       data.complained ? 1 : 0,
-      status,
+      reviewStatus,
       attendanceDate
     ]
   );
@@ -115,9 +132,9 @@ export async function createClient(userId: number, data: ClientInput): Promise<C
   const client = await dbGet(
     `SELECT 
       id, user_id as userId, name, phone, 
-      satisfied, complained, status,
+      satisfied, complained, review_status as reviewStatus,
+      sent_at as sentAt, reviewed_at as reviewedAt,
       attendance_date as attendanceDate, 
-      request_date as requestDate, 
       created_at as createdAt
     FROM clients 
     WHERE id = ?`,
@@ -133,16 +150,16 @@ export async function createClient(userId: number, data: ClientInput): Promise<C
 }
 
 /**
- * Atualiza status do cliente para "solicitado" e registra data
+ * Atualiza status do cliente para "SENT" e registra data de envio
  */
-export async function markClientAsRequested(clientId: number, userId: number): Promise<Client> {
-  const requestDate = new Date().toISOString();
+export async function markClientAsSent(clientId: number, userId: number): Promise<Client> {
+  const sentAt = new Date().toISOString();
 
   await dbRun(
     `UPDATE clients 
-    SET status = 'solicitado', request_date = ? 
+    SET review_status = 'SENT', sent_at = ? 
     WHERE id = ? AND user_id = ?`,
-    [requestDate, clientId, userId]
+    [sentAt, clientId, userId]
   );
 
   const client = await getClientById(clientId, userId);
@@ -152,4 +169,93 @@ export async function markClientAsRequested(clientId: number, userId: number): P
   }
 
   return client;
+}
+
+/**
+ * Marca cliente como avaliado manualmente
+ */
+export async function markClientAsReviewed(clientId: number, userId: number): Promise<Client> {
+  const reviewedAt = new Date().toISOString();
+
+  await dbRun(
+    `UPDATE clients 
+    SET review_status = 'REVIEWED_MANUAL', reviewed_at = ? 
+    WHERE id = ? AND user_id = ?`,
+    [reviewedAt, clientId, userId]
+  );
+
+  const client = await getClientById(clientId, userId);
+  
+  if (!client) {
+    throw new Error('Cliente não encontrado após atualização');
+  }
+
+  return client;
+}
+
+/**
+ * Busca métricas de envios e avaliações
+ */
+export async function getMetrics(userId: number): Promise<Metrics> {
+  const now = new Date();
+  
+  // Início do dia (hoje às 00:00)
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  
+  // Início da semana (domingo às 00:00)
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfWeekISO = startOfWeek.toISOString();
+  
+  // Início do mês (dia 1 às 00:00)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  // Envios hoje
+  const sentTodayResult = await dbGet(
+    `SELECT COUNT(*) as count FROM clients 
+     WHERE user_id = ? AND review_status IN ('SENT', 'REVIEWED_MANUAL') 
+     AND sent_at >= ?`,
+    [userId, startOfToday]
+  ) as { count: number };
+
+  // Envios esta semana
+  const sentWeekResult = await dbGet(
+    `SELECT COUNT(*) as count FROM clients 
+     WHERE user_id = ? AND review_status IN ('SENT', 'REVIEWED_MANUAL') 
+     AND sent_at >= ?`,
+    [userId, startOfWeekISO]
+  ) as { count: number };
+
+  // Envios este mês
+  const sentMonthResult = await dbGet(
+    `SELECT COUNT(*) as count FROM clients 
+     WHERE user_id = ? AND review_status IN ('SENT', 'REVIEWED_MANUAL') 
+     AND sent_at >= ?`,
+    [userId, startOfMonth]
+  ) as { count: number };
+
+  // Avaliações confirmadas esta semana
+  const reviewedWeekResult = await dbGet(
+    `SELECT COUNT(*) as count FROM clients 
+     WHERE user_id = ? AND review_status = 'REVIEWED_MANUAL' 
+     AND reviewed_at >= ?`,
+    [userId, startOfWeekISO]
+  ) as { count: number };
+
+  // Avaliações confirmadas este mês
+  const reviewedMonthResult = await dbGet(
+    `SELECT COUNT(*) as count FROM clients 
+     WHERE user_id = ? AND review_status = 'REVIEWED_MANUAL' 
+     AND reviewed_at >= ?`,
+    [userId, startOfMonth]
+  ) as { count: number };
+
+  return {
+    sentToday: sentTodayResult.count,
+    sentWeek: sentWeekResult.count,
+    sentMonth: sentMonthResult.count,
+    reviewedWeek: reviewedWeekResult.count,
+    reviewedMonth: reviewedMonthResult.count,
+  };
 }

@@ -29,11 +29,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <span className="logo-text">Avaliações Google</span>
           </div>
           <nav className="nav">
+            <Link to="/dashboard" className={`nav-link ${isActive('/dashboard')}`}>
+              📊 Dashboard
+            </Link>
             <Link to="/clients" className={`nav-link ${isActive('/clients')}`}>
-              Clientes
+              👥 Clientes
             </Link>
             <Link to="/config" className={`nav-link ${isActive('/config')}`}>
-              Configurações
+              ⚙️ Configurações
             </Link>
             <button onClick={handleLogout} className="btn btn-secondary btn-sm">
               Sair
