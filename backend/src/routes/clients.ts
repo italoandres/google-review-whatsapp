@@ -41,6 +41,27 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/clients/metrics
+ * Retorna métricas de envios e avaliações
+ * IMPORTANTE: Esta rota deve vir ANTES de /:id para não ser interpretada como ID
+ */
+router.get('/metrics', async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const metrics = await getMetrics(userId);
+
+    res.json(metrics);
+  } catch (error) {
+    console.error('Erro ao buscar métricas:', error);
+    res.status(500).json({
+      error: 'INTERNAL_ERROR',
+      message: 'Erro ao buscar métricas'
+    });
+  }
+});
+
+/**
  * GET /api/clients/:id
  * Busca cliente por ID
  */
@@ -283,26 +304,6 @@ router.post('/:id/mark-reviewed', async (req: Request, res: Response) => {
     res.status(500).json({
       error: 'INTERNAL_ERROR',
       message: 'Erro ao marcar cliente como avaliado'
-    });
-  }
-});
-
-/**
- * GET /api/clients/metrics
- * Retorna métricas de envios e avaliações
- */
-router.get('/metrics', async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.userId;
-
-    const metrics = await getMetrics(userId);
-
-    res.json(metrics);
-  } catch (error) {
-    console.error('Erro ao buscar métricas:', error);
-    res.status(500).json({
-      error: 'INTERNAL_ERROR',
-      message: 'Erro ao buscar métricas'
     });
   }
 });
