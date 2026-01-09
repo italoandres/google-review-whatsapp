@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { supabase } from '../lib/supabase';
 
 // ⚠️ IMPORTANTE: Em produção, NUNCA usar localhost
 // A variável VITE_API_URL deve ser configurada no Netlify
@@ -32,12 +33,12 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Interceptor para adicionar token JWT
+// Interceptor para adicionar token do Supabase
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
     }
     return config;
   },
@@ -49,11 +50,10 @@ api.interceptors.request.use(
 // Interceptor para tratar erros de autenticação
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Token inválido ou expirado - limpar e redirecionar para login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Token inválido ou expirado - fazer logout
+      await supabase.auth.signOut();
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -62,7 +62,7 @@ api.interceptors.response.use(
 
 // Tipos
 export interface User {
-  id: number;
+  id: string;
   email: string;
 }
 
@@ -72,8 +72,8 @@ export interface AuthResponse {
 }
 
 export interface Business {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   businessName: string;
   whatsappNumber: string;
   googleReviewLink: string;
@@ -83,8 +83,8 @@ export interface Business {
 }
 
 export interface Client {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   name: string | null;
   phone: string;
   satisfied: boolean;
@@ -108,19 +108,6 @@ export interface RequestReviewResponse {
   waLink: string;
   client: Client;
 }
-
-// API de Autenticação
-export const authApi = {
-  register: async (email: string, password: string): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/register', { email, password });
-    return response.data;
-  },
-
-  login: async (email: string, password: string): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/login', { email, password });
-    return response.data;
-  },
-};
 
 // API de Negócio
 export const businessApi = {
@@ -157,7 +144,7 @@ export const clientsApi = {
     return response.data.clients;
   },
 
-  getById: async (id: number): Promise<Client> => {
+  getById: async (id: string): Promise<Client> => {
     const response = await api.get<Client>(`/clients/${id}`);
     return response.data;
   },
@@ -172,12 +159,12 @@ export const clientsApi = {
     return response.data;
   },
 
-  requestReview: async (id: number): Promise<RequestReviewResponse> => {
+  requestReview: async (id: string): Promise<RequestReviewResponse> => {
     const response = await api.post<RequestReviewResponse>(`/clients/${id}/request-review`);
     return response.data;
   },
 
-  markAsReviewed: async (id: number): Promise<Client> => {
+  markAsReviewed: async (id: string): Promise<Client> => {
     const response = await api.post<Client>(`/clients/${id}/mark-reviewed`);
     return response.data;
   },

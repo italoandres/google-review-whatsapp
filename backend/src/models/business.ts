@@ -1,8 +1,8 @@
-import { dbGet, dbRun } from '../database/connection';
+import { supabase } from '../lib/supabase';
 
 export interface Business {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   businessName: string;
   whatsappNumber: string;
   googleReviewLink: string;
@@ -21,83 +21,113 @@ export interface BusinessInput {
 /**
  * Busca configuração do negócio por userId
  */
-export async function getBusinessByUserId(userId: number): Promise<Business | null> {
-  const business = await dbGet(
-    `SELECT 
-      id, user_id as userId, business_name as businessName, 
-      whatsapp_number as whatsappNumber, google_review_link as googleReviewLink,
-      default_message as defaultMessage, created_at as createdAt, updated_at as updatedAt
-    FROM business 
-    WHERE user_id = ?`,
-    [userId]
-  ) as Business | undefined;
+export async function getBusinessByUserId(userId: string): Promise<Business | null> {
+  const { data, error } = await supabase
+    .from('business')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
-  return business || null;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // Nenhum registro encontrado
+      return null;
+    }
+    console.error('Erro ao buscar business:', error);
+    throw new Error('Erro ao buscar configuração do negócio');
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  // Mapear campos do banco para interface
+  return {
+    id: data.id,
+    userId: data.user_id,
+    businessName: data.business_name,
+    whatsappNumber: data.whatsapp_number,
+    googleReviewLink: data.google_review_link,
+    defaultMessage: data.default_message,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
 }
 
 /**
  * Cria configuração do negócio
  */
-export async function createBusiness(userId: number, data: BusinessInput): Promise<Business> {
-  const result = await dbRun(
-    `INSERT INTO business 
-      (user_id, business_name, whatsapp_number, google_review_link, default_message) 
-    VALUES (?, ?, ?, ?, ?)`,
-    [userId, data.businessName, data.whatsappNumber, data.googleReviewLink, data.defaultMessage]
-  );
+export async function createBusiness(userId: string, input: BusinessInput): Promise<Business> {
+  const { data, error } = await supabase
+    .from('business')
+    .insert({
+      user_id: userId,
+      business_name: input.businessName,
+      whatsapp_number: input.whatsappNumber,
+      google_review_link: input.googleReviewLink,
+      default_message: input.defaultMessage
+    })
+    .select()
+    .single();
 
-  const businessId = result.lastID;
+  if (error) {
+    console.error('Erro ao criar business:', error);
+    throw new Error('Erro ao criar configuração do negócio');
+  }
 
-  const business = await dbGet(
-    `SELECT 
-      id, user_id as userId, business_name as businessName, 
-      whatsapp_number as whatsappNumber, google_review_link as googleReviewLink,
-      default_message as defaultMessage, created_at as createdAt, updated_at as updatedAt
-    FROM business 
-    WHERE id = ?`,
-    [businessId]
-  ) as Business;
-
-  return business;
+  // Mapear campos do banco para interface
+  return {
+    id: data.id,
+    userId: data.user_id,
+    businessName: data.business_name,
+    whatsappNumber: data.whatsapp_number,
+    googleReviewLink: data.google_review_link,
+    defaultMessage: data.default_message,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
 }
 
 /**
  * Atualiza configuração do negócio
  */
-export async function updateBusiness(userId: number, data: Partial<BusinessInput>): Promise<Business> {
-  const updates: string[] = [];
-  const values: any[] = [];
+export async function updateBusiness(userId: string, input: Partial<BusinessInput>): Promise<Business> {
+  const updates: any = {};
 
-  if (data.businessName !== undefined) {
-    updates.push('business_name = ?');
-    values.push(data.businessName);
+  if (input.businessName !== undefined) {
+    updates.business_name = input.businessName;
   }
-  if (data.whatsappNumber !== undefined) {
-    updates.push('whatsapp_number = ?');
-    values.push(data.whatsappNumber);
+  if (input.whatsappNumber !== undefined) {
+    updates.whatsapp_number = input.whatsappNumber;
   }
-  if (data.googleReviewLink !== undefined) {
-    updates.push('google_review_link = ?');
-    values.push(data.googleReviewLink);
+  if (input.googleReviewLink !== undefined) {
+    updates.google_review_link = input.googleReviewLink;
   }
-  if (data.defaultMessage !== undefined) {
-    updates.push('default_message = ?');
-    values.push(data.defaultMessage);
+  if (input.defaultMessage !== undefined) {
+    updates.default_message = input.defaultMessage;
   }
 
-  updates.push('updated_at = CURRENT_TIMESTAMP');
-  values.push(userId);
+  const { data, error } = await supabase
+    .from('business')
+    .update(updates)
+    .eq('user_id', userId)
+    .select()
+    .single();
 
-  await dbRun(
-    `UPDATE business SET ${updates.join(', ')} WHERE user_id = ?`,
-    values
-  );
-
-  const business = await getBusinessByUserId(userId);
-  
-  if (!business) {
-    throw new Error('Erro ao atualizar configuração');
+  if (error) {
+    console.error('Erro ao atualizar business:', error);
+    throw new Error('Erro ao atualizar configuração do negócio');
   }
 
-  return business;
+  // Mapear campos do banco para interface
+  return {
+    id: data.id,
+    userId: data.user_id,
+    businessName: data.business_name,
+    whatsappNumber: data.whatsapp_number,
+    googleReviewLink: data.google_review_link,
+    defaultMessage: data.default_message,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
 }

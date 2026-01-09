@@ -1,10 +1,10 @@
-import { dbGet, dbAll, dbRun } from '../database/connection';
+import { supabase } from '../lib/supabase';
 
 export type ReviewStatus = 'NOT_SENT' | 'SENT' | 'REVIEWED_MANUAL';
 
 export interface Client {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   name: string | null;
   phone: string;
   satisfied: boolean;
@@ -41,162 +41,172 @@ export function calculateInitialReviewStatus(complained: boolean): ReviewStatus 
 }
 
 /**
+ * Mapeia dados do banco para interface Client
+ */
+function mapClientFromDB(data: any): Client {
+  return {
+    id: data.id,
+    userId: data.user_id,
+    name: data.name,
+    phone: data.phone,
+    satisfied: data.satisfied,
+    complained: data.complained,
+    reviewStatus: data.review_status,
+    sentAt: data.sent_at,
+    reviewedAt: data.reviewed_at,
+    attendanceDate: data.attendance_date,
+    createdAt: data.created_at
+  };
+}
+
+/**
  * Verifica se telefone já existe para o usuário
  */
-export async function checkPhoneExists(userId: number, phone: string): Promise<boolean> {
-  const result = await dbGet(
-    `SELECT COUNT(*) as count FROM clients WHERE user_id = ? AND phone = ?`,
-    [userId, phone]
-  ) as { count: number };
+export async function checkPhoneExists(userId: string, phone: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('phone', phone)
+    .single();
 
-  return result.count > 0;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // Nenhum registro encontrado
+      return false;
+    }
+    console.error('Erro ao verificar telefone:', error);
+    return false;
+  }
+
+  return !!data;
 }
 
 /**
  * Busca todos os clientes de um usuário
  */
-export async function getClientsByUserId(userId: number): Promise<Client[]> {
-  const clients = await dbAll(
-    `SELECT 
-      id, user_id as userId, name, phone, 
-      satisfied, complained, review_status as reviewStatus,
-      sent_at as sentAt, reviewed_at as reviewedAt,
-      attendance_date as attendanceDate, 
-      created_at as createdAt
-    FROM clients 
-    WHERE user_id = ?
-    ORDER BY created_at DESC`,
-    [userId]
-  ) as any[];
+export async function getClientsByUserId(userId: string): Promise<Client[]> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
-  // Converter booleanos do SQLite (0/1) para JavaScript (true/false)
-  return clients.map(client => ({
-    ...client,
-    satisfied: Boolean(client.satisfied),
-    complained: Boolean(client.complained)
-  }));
+  if (error) {
+    console.error('Erro ao buscar clientes:', error);
+    throw new Error('Erro ao buscar clientes');
+  }
+
+  return data.map(mapClientFromDB);
 }
 
 /**
  * Busca cliente por ID
  */
-export async function getClientById(clientId: number, userId: number): Promise<Client | null> {
-  const client = await dbGet(
-    `SELECT 
-      id, user_id as userId, name, phone, 
-      satisfied, complained, review_status as reviewStatus,
-      sent_at as sentAt, reviewed_at as reviewedAt,
-      attendance_date as attendanceDate, 
-      created_at as createdAt
-    FROM clients 
-    WHERE id = ? AND user_id = ?`,
-    [clientId, userId]
-  ) as any;
+export async function getClientById(clientId: string, userId: string): Promise<Client | null> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .eq('user_id', userId)
+    .single();
 
-  if (!client) {
-    return null;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // Nenhum registro encontrado
+      return null;
+    }
+    console.error('Erro ao buscar cliente:', error);
+    throw new Error('Erro ao buscar cliente');
   }
 
-  // Converter booleanos do SQLite (0/1) para JavaScript (true/false)
-  return {
-    ...client,
-    satisfied: Boolean(client.satisfied),
-    complained: Boolean(client.complained)
-  };
+  return mapClientFromDB(data);
 }
 
 /**
  * Cria novo cliente
  */
-export async function createClient(userId: number, data: ClientInput): Promise<Client> {
-  const reviewStatus = calculateInitialReviewStatus(data.complained);
-  const attendanceDate = new Date().toISOString();
+export async function createClient(userId: string, input: ClientInput): Promise<Client> {
+  const reviewStatus = calculateInitialReviewStatus(input.complained);
 
-  const result = await dbRun(
-    `INSERT INTO clients 
-      (user_id, name, phone, satisfied, complained, review_status, attendance_date) 
-    VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      userId,
-      data.name || null,
-      data.phone,
-      data.satisfied ? 1 : 0,
-      data.complained ? 1 : 0,
-      reviewStatus,
-      attendanceDate
-    ]
-  );
+  const { data, error } = await supabase
+    .from('clients')
+    .insert({
+      user_id: userId,
+      name: input.name || null,
+      phone: input.phone,
+      satisfied: input.satisfied,
+      complained: input.complained,
+      review_status: reviewStatus,
+      attendance_date: new Date().toISOString()
+    })
+    .select()
+    .single();
 
-  const clientId = result.lastID;
+  if (error) {
+    console.error('Erro ao criar cliente:', error);
+    
+    // Tratar erro de telefone duplicado
+    if (error.code === '23505') {
+      throw new Error('Este telefone já está cadastrado');
+    }
+    
+    throw new Error('Erro ao criar cliente');
+  }
 
-  const client = await dbGet(
-    `SELECT 
-      id, user_id as userId, name, phone, 
-      satisfied, complained, review_status as reviewStatus,
-      sent_at as sentAt, reviewed_at as reviewedAt,
-      attendance_date as attendanceDate, 
-      created_at as createdAt
-    FROM clients 
-    WHERE id = ?`,
-    [clientId]
-  ) as any;
-
-  // Converter booleanos do SQLite (0/1) para JavaScript (true/false)
-  return {
-    ...client,
-    satisfied: Boolean(client.satisfied),
-    complained: Boolean(client.complained)
-  };
+  return mapClientFromDB(data);
 }
 
 /**
  * Atualiza status do cliente para "SENT" e registra data de envio
  */
-export async function markClientAsSent(clientId: number, userId: number): Promise<Client> {
-  const sentAt = new Date().toISOString();
+export async function markClientAsSent(clientId: string, userId: string): Promise<Client> {
+  const { data, error } = await supabase
+    .from('clients')
+    .update({
+      review_status: 'SENT',
+      sent_at: new Date().toISOString()
+    })
+    .eq('id', clientId)
+    .eq('user_id', userId)
+    .select()
+    .single();
 
-  await dbRun(
-    `UPDATE clients 
-    SET review_status = 'SENT', sent_at = ? 
-    WHERE id = ? AND user_id = ?`,
-    [sentAt, clientId, userId]
-  );
-
-  const client = await getClientById(clientId, userId);
-  
-  if (!client) {
-    throw new Error('Cliente não encontrado após atualização');
+  if (error) {
+    console.error('Erro ao marcar cliente como enviado:', error);
+    throw new Error('Erro ao atualizar cliente');
   }
 
-  return client;
+  return mapClientFromDB(data);
 }
 
 /**
  * Marca cliente como avaliado manualmente
  */
-export async function markClientAsReviewed(clientId: number, userId: number): Promise<Client> {
-  const reviewedAt = new Date().toISOString();
+export async function markClientAsReviewed(clientId: string, userId: string): Promise<Client> {
+  const { data, error } = await supabase
+    .from('clients')
+    .update({
+      review_status: 'REVIEWED_MANUAL',
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', clientId)
+    .eq('user_id', userId)
+    .select()
+    .single();
 
-  await dbRun(
-    `UPDATE clients 
-    SET review_status = 'REVIEWED_MANUAL', reviewed_at = ? 
-    WHERE id = ? AND user_id = ?`,
-    [reviewedAt, clientId, userId]
-  );
-
-  const client = await getClientById(clientId, userId);
-  
-  if (!client) {
-    throw new Error('Cliente não encontrado após atualização');
+  if (error) {
+    console.error('Erro ao marcar cliente como avaliado:', error);
+    throw new Error('Erro ao atualizar cliente');
   }
 
-  return client;
+  return mapClientFromDB(data);
 }
 
 /**
  * Busca métricas de envios e avaliações
  */
-export async function getMetrics(userId: number): Promise<Metrics> {
+export async function getMetrics(userId: string): Promise<Metrics> {
   const now = new Date();
   
   // Início do dia (hoje às 00:00)
@@ -212,50 +222,50 @@ export async function getMetrics(userId: number): Promise<Metrics> {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   // Envios hoje
-  const sentTodayResult = await dbGet(
-    `SELECT COUNT(*) as count FROM clients 
-     WHERE user_id = ? AND review_status IN ('SENT', 'REVIEWED_MANUAL') 
-     AND sent_at >= ?`,
-    [userId, startOfToday]
-  ) as { count: number };
+  const { count: sentToday } = await supabase
+    .from('clients')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('review_status', ['SENT', 'REVIEWED_MANUAL'])
+    .gte('sent_at', startOfToday);
 
   // Envios esta semana
-  const sentWeekResult = await dbGet(
-    `SELECT COUNT(*) as count FROM clients 
-     WHERE user_id = ? AND review_status IN ('SENT', 'REVIEWED_MANUAL') 
-     AND sent_at >= ?`,
-    [userId, startOfWeekISO]
-  ) as { count: number };
+  const { count: sentWeek } = await supabase
+    .from('clients')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('review_status', ['SENT', 'REVIEWED_MANUAL'])
+    .gte('sent_at', startOfWeekISO);
 
   // Envios este mês
-  const sentMonthResult = await dbGet(
-    `SELECT COUNT(*) as count FROM clients 
-     WHERE user_id = ? AND review_status IN ('SENT', 'REVIEWED_MANUAL') 
-     AND sent_at >= ?`,
-    [userId, startOfMonth]
-  ) as { count: number };
+  const { count: sentMonth } = await supabase
+    .from('clients')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('review_status', ['SENT', 'REVIEWED_MANUAL'])
+    .gte('sent_at', startOfMonth);
 
   // Avaliações confirmadas esta semana
-  const reviewedWeekResult = await dbGet(
-    `SELECT COUNT(*) as count FROM clients 
-     WHERE user_id = ? AND review_status = 'REVIEWED_MANUAL' 
-     AND reviewed_at >= ?`,
-    [userId, startOfWeekISO]
-  ) as { count: number };
+  const { count: reviewedWeek } = await supabase
+    .from('clients')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('review_status', 'REVIEWED_MANUAL')
+    .gte('reviewed_at', startOfWeekISO);
 
   // Avaliações confirmadas este mês
-  const reviewedMonthResult = await dbGet(
-    `SELECT COUNT(*) as count FROM clients 
-     WHERE user_id = ? AND review_status = 'REVIEWED_MANUAL' 
-     AND reviewed_at >= ?`,
-    [userId, startOfMonth]
-  ) as { count: number };
+  const { count: reviewedMonth } = await supabase
+    .from('clients')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('review_status', 'REVIEWED_MANUAL')
+    .gte('reviewed_at', startOfMonth);
 
   return {
-    sentToday: sentTodayResult.count,
-    sentWeek: sentWeekResult.count,
-    sentMonth: sentMonthResult.count,
-    reviewedWeek: reviewedWeekResult.count,
-    reviewedMonth: reviewedMonthResult.count,
+    sentToday: sentToday || 0,
+    sentWeek: sentWeek || 0,
+    sentMonth: sentMonth || 0,
+    reviewedWeek: reviewedWeek || 0,
+    reviewedMonth: reviewedMonth || 0,
   };
 }

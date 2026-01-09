@@ -6,24 +6,45 @@ Sistema web MVP para pequenos negócios solicitarem avaliações no Google via W
 
 Facilitar o envio do link oficial de avaliação do Google por WhatsApp com apenas 1 clique, usando link wa.me (Click-to-Chat), sem envio automático, sem WhatsApp API e sem automações ilegais.
 
+## ⚡ Novidade: Migração para Supabase
+
+**Status:** ✅ Migração concluída!
+
+O sistema foi migrado de SQLite para **Supabase** (PostgreSQL), trazendo:
+- ✅ **Dados persistentes** - Nunca mais perder dados ao trocar de aba
+- ✅ **Backup automático** - Supabase faz backup diário
+- ✅ **Autenticação robusta** - Supabase Auth
+- ✅ **Escalável** - Suporta milhares de usuários
+- ✅ **Grátis** - Até 500MB de dados
+
+📖 **Documentação da migração:**
+- `MIGRACAO-SUPABASE-CONCLUIDA.md` - Resumo completo
+- `COMO-CRIAR-TABELAS-SUPABASE.md` - Como criar tabelas
+- `CHECKLIST-TESTES-SUPABASE.md` - Testes a fazer
+- `DEPLOY-SUPABASE.md` - Deploy em produção
+
 ## 🚀 Funcionalidades
 
-- ✅ Login simples com email e senha
+- ✅ Login simples com email e senha (Supabase Auth)
 - ✅ Configuração do negócio (nome, WhatsApp, link do Google, mensagem padrão)
 - ✅ Cadastro de clientes com status (satisfeito/reclamou)
+- ✅ Controle de status: ⬜ NÃO ENVIADO → 🟡 ENVIADO → 🟢 AVALIADO
+- ✅ Bloqueio de reenvio automático
+- ✅ Marcação manual de "avaliado"
+- ✅ Dashboard com métricas (envios e avaliações)
 - ✅ Lista de clientes com filtros por status
 - ✅ Geração de link WhatsApp com mensagem personalizada
 - ✅ Histórico de solicitações de avaliação
 - ✅ Interface responsiva (desktop e mobile)
+- ✅ Dados persistentes (Supabase)
 
 ## 🛠️ Stack Tecnológica
 
 ### Backend
 - Node.js + Express
 - TypeScript
-- SQLite (banco de dados)
-- JWT (autenticação)
-- bcrypt (hash de senhas)
+- **Supabase** (PostgreSQL + Auth)
+- @supabase/supabase-js
 
 ### Frontend
 - React 18
@@ -31,21 +52,33 @@ Facilitar o envio do link oficial de avaliação do Google por WhatsApp com apen
 - React Router (navegação)
 - Axios (requisições HTTP)
 - Vite (build tool)
+- **Supabase Auth** (autenticação)
 
 ## 📋 Pré-requisitos
 
 - Node.js 18+ instalado
 - npm ou yarn
+- **Conta no Supabase** (gratuita)
 
 ## 🔧 Instalação
 
-### Método Rápido (Windows)
+### 1. Criar Tabelas no Supabase
+
+Antes de rodar o sistema, você precisa criar as tabelas no Supabase:
+
+1. Acesse: https://cuychbunipzwfaitnbor.supabase.co
+2. Vá em **SQL Editor** → **New query**
+3. Copie e cole o conteúdo de `supabase-schema.sql`
+4. Clique em **Run**
+
+📖 Ver guia completo: `COMO-CRIAR-TABELAS-SUPABASE.md`
+
+### 2. Método Rápido (Windows)
 
 Se você está no Windows, use os scripts automáticos:
 
 1. **Duplo-clique em `install.bat`**
    - Instala todas as dependências automaticamente
-   - Inicializa o banco de dados
    - Aguarde a conclusão (pode levar 5-10 minutos)
 
 2. **Duplo-clique em `start.bat`**

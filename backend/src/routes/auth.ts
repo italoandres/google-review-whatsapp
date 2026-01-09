@@ -1,14 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { dbGet, dbRun } from '../database/connection';
-import { hashPassword, comparePassword } from '../auth/hash';
-import { generateToken } from '../auth/jwt';
+import { supabase } from '../lib/supabase';
 import { validateEmail, validateRequired } from '../validators/required';
 
 const router = Router();
 
 /**
  * POST /api/auth/register
- * Registra novo usuário
+ * Registra novo usuário usando Supabase Auth
  */
 router.post('/register', async (req: Request, res: Response) => {
   try {
@@ -44,36 +42,70 @@ router.post('/register', async (req: Request, res: Response) => {
       return;
     }
 
-    // Verificar se email já existe
-    const existingUser = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
-    if (existingUser) {
+    // Criar usuário no Supabase Auth
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true // Auto-confirmar email (desenvolvimento)
+    });
+
+    if (error) {
+      // Tratar erros específicos do Supabase
+      if (error.message.includes('already registered')) {
+        res.status(400).json({
+          error: 'EMAIL_EXISTS',
+          message: 'Email já cadastrado'
+        });
+        return;
+      }
+
+      console.error('Erro do Supabase:', error);
       res.status(400).json({
-        error: 'EMAIL_EXISTS',
-        message: 'Email já cadastrado'
+        error: 'AUTH_ERROR',
+        message: error.message
       });
       return;
     }
 
-    // Hash da senha
-    const passwordHash = await hashPassword(password);
+    if (!data.user) {
+      res.status(500).json({
+        error: 'INTERNAL_ERROR',
+        message: 'Erro ao criar usuário'
+      });
+      return;
+    }
 
-    // Inserir usuário
-    const result = await dbRun(
-      'INSERT INTO users (email, password_hash) VALUES (?, ?)',
-      [email, passwordHash]
-    );
+    // Criar perfil do usuário
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .insert({
+        id: data.user.id,
+        full_name: null,
+        avatar_url: null,
+        phone: null
+      });
 
-    const userId = result.lastID;
+    if (profileError) {
+      console.error('Erro ao criar perfil:', profileError);
+      // Não falhar o registro se o perfil não for criado
+    }
 
-    // Gerar token
-    const token = generateToken({ userId, email });
+    // Gerar sessão para o usuário
+    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: data.user.email!
+    });
+
+    if (sessionError) {
+      console.error('Erro ao gerar sessão:', sessionError);
+    }
 
     res.status(201).json({
-      token,
       user: {
-        id: userId,
-        email
-      }
+        id: data.user.id,
+        email: data.user.email
+      },
+      message: 'Usuário criado com sucesso. Faça login para continuar.'
     });
   } catch (error) {
     console.error('Erro ao registrar usuário:', error);
@@ -86,7 +118,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
 /**
  * POST /api/auth/login
- * Autentica usuário
+ * Autentica usuário usando Supabase Auth
  */
 router.post('/login', async (req: Request, res: Response) => {
   try {
@@ -103,13 +135,13 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    // Buscar usuário
-    const user = await dbGet(
-      'SELECT id, email, password_hash FROM users WHERE email = ?',
-      [email]
-    ) as any;
+    // Autenticar com Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
-    if (!user) {
+    if (error) {
       res.status(401).json({
         error: 'INVALID_CREDENTIALS',
         message: 'Email ou senha inválidos'
@@ -117,10 +149,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    // Verificar senha
-    const passwordMatch = await comparePassword(password, user.password_hash);
-    
-    if (!passwordMatch) {
+    if (!data.user || !data.session) {
       res.status(401).json({
         error: 'INVALID_CREDENTIALS',
         message: 'Email ou senha inválidos'
@@ -128,14 +157,12 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    // Gerar token
-    const token = generateToken({ userId: user.id, email: user.email });
-
+    // Retornar token e dados do usuário
     res.json({
-      token,
+      token: data.session.access_token,
       user: {
-        id: user.id,
-        email: user.email
+        id: data.user.id,
+        email: data.user.email
       }
     });
   } catch (error) {

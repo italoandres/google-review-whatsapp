@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '../services/api';
-import { AxiosError } from 'axios';
-import { ErrorResponse } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,20 +30,18 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = isRegister
-        ? await authApi.register(email, password)
-        : await authApi.login(email, password);
-
-      // Salvar token e usuário no localStorage
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-
-      // Redirecionar para página principal
-      navigate('/clients');
-    } catch (err) {
-      const axiosError = err as AxiosError<ErrorResponse>;
+      if (isRegister) {
+        await signUp(email, password);
+        setError('Conta criada! Verifique seu email para confirmar.');
+        setIsRegister(false);
+      } else {
+        await signIn(email, password);
+        // Redirecionar para página principal
+        navigate('/clients');
+      }
+    } catch (err: any) {
       setError(
-        axiosError.response?.data?.message || 
+        err.message || 
         'Erro ao fazer login. Tente novamente.'
       );
     } finally {

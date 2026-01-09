@@ -1,13 +1,12 @@
+// Carregar variáveis de ambiente PRIMEIRO
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { initDatabase } from './database/init';
 import authRoutes from './routes/auth';
 import businessRoutes from './routes/business';
 import clientsRoutes from './routes/clients';
-
-// Carregar variáveis de ambiente
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,26 +52,12 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Inicializar banco de dados e iniciar servidor
-async function startServer() {
-  try {
-    // Inicializar banco de dados
-    await initDatabase();
-    console.log('✅ Banco de dados inicializado');
-
-    // Iniciar servidor
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor rodando na porta ${PORT}`);
-      console.log(`📍 http://localhost:${PORT}`);
-      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-    });
-  } catch (error) {
-    console.error('❌ Erro ao iniciar servidor:', error);
-    process.exit(1);
-  }
-}
-
 // Iniciar servidor
-startServer();
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📍 http://localhost:${PORT}`);
+  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+  console.log(`🗄️  Usando Supabase como banco de dados`);
+});
 
 export default app;

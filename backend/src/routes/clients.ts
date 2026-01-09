@@ -68,15 +68,7 @@ router.get('/metrics', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
-    const clientId = parseInt(req.params.id);
-
-    if (isNaN(clientId)) {
-      res.status(400).json({
-        error: 'VALIDATION_ERROR',
-        message: 'ID do cliente inválido'
-      });
-      return;
-    }
+    const clientId = req.params.id; // UUID agora é string
 
     const client = await getClientById(clientId, userId);
 
@@ -185,15 +177,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.post('/:id/request-review', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
-    const clientId = parseInt(req.params.id);
-
-    if (isNaN(clientId)) {
-      res.status(400).json({
-        error: 'VALIDATION_ERROR',
-        message: 'ID do cliente inválido'
-      });
-      return;
-    }
+    const clientId = req.params.id; // UUID agora é string
 
     // Buscar cliente
     const client = await getClientById(clientId, userId);
@@ -265,15 +249,7 @@ router.post('/:id/request-review', async (req: Request, res: Response) => {
 router.post('/:id/mark-reviewed', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
-    const clientId = parseInt(req.params.id);
-
-    if (isNaN(clientId)) {
-      res.status(400).json({
-        error: 'VALIDATION_ERROR',
-        message: 'ID do cliente inválido'
-      });
-      return;
-    }
+    const clientId = req.params.id; // UUID agora é string
 
     // Buscar cliente
     const client = await getClientById(clientId, userId);

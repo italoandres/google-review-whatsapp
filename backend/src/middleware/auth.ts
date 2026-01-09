@@ -1,20 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../auth/jwt';
+import { supabase } from '../lib/supabase';
 
 // Estender interface Request para incluir user
 declare global {
   namespace Express {
     interface Request {
-      user?: JwtPayload;
+      user?: {
+        userId: string;
+        email: string;
+      };
     }
   }
 }
 
 /**
- * Middleware de autenticação
- * Verifica se o token JWT é válido e adiciona user ao request
+ * Middleware de autenticação usando Supabase
+ * Verifica se o token JWT do Supabase é válido e adiciona user ao request
  */
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // Extrair token do header Authorization
     const authHeader = req.headers.authorization;
@@ -40,17 +43,29 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 
     const token = parts[1];
 
-    // Verificar token
-    const payload = verifyToken(token);
+    // Verificar token com Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
     
+    if (error || !user) {
+      res.status(401).json({ 
+        error: 'UNAUTHORIZED', 
+        message: 'Token inválido ou expirado' 
+      });
+      return;
+    }
+
     // Adicionar user ao request
-    req.user = payload;
+    req.user = {
+      userId: user.id,
+      email: user.email!
+    };
     
     next();
   } catch (error) {
+    console.error('Erro no middleware de autenticação:', error);
     res.status(401).json({ 
       error: 'UNAUTHORIZED', 
-      message: 'Token inválido ou expirado' 
+      message: 'Erro ao verificar autenticação' 
     });
   }
 }
