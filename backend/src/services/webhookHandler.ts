@@ -5,6 +5,9 @@ import {
   updateWhatsAppInstance 
 } from '../models/whatsappInstance';
 import { insertConnectionHistory } from '../models/connectionHistory';
+import { extractContact } from '../utils/contactExtractor';
+import { normalizePhone } from '../utils/phoneNormalizer';
+import { checkPhoneExists, createAutoImportedClient } from '../models/client';
 
 /**
  * Webhook event payload structure from Evolution API
@@ -218,7 +221,7 @@ export class WebhookHandler {
 
   /**
    * Handle messages.upsert event
-   * Logs message received event
+   * Logs message received event and auto-imports contacts
    * 
    * @param payload - Webhook payload
    * @returns Processing result
@@ -249,6 +252,59 @@ export class WebhookHandler {
       fromMe: messageData.key?.fromMe,
       pushName: messageData.pushName,
     });
+    
+    // Auto-import contact if it's an incoming message
+    try {
+      const contact = extractContact(payload as any);
+      
+      if (contact) {
+        // Normalize phone number
+        const normalizedPhone = normalizePhone(contact.phone);
+        
+        if (normalizedPhone) {
+          // Check if phone already exists
+          const phoneExists = await checkPhoneExists(instance.userId, normalizedPhone);
+          
+          if (!phoneExists) {
+            // Create new auto-imported client
+            const client = await createAutoImportedClient({
+              userId: instance.userId,
+              phone: normalizedPhone,
+              name: contact.name,
+            });
+            
+            console.info('Contact auto-imported', {
+              instanceName,
+              clientId: client.id,
+              phone: normalizedPhone,
+              name: contact.name,
+            });
+            
+            return {
+              success: true,
+              message: 'Message processed and contact imported',
+              clientId: client.id,
+            };
+          } else {
+            console.info('Contact already exists, skipping import', {
+              instanceName,
+              phone: normalizedPhone,
+            });
+          }
+        } else {
+          console.warn('Failed to normalize phone number', {
+            instanceName,
+            phone: contact.phone,
+          });
+        }
+      }
+    } catch (importError) {
+      // Log error but don't fail the webhook
+      console.error('Error auto-importing contact', {
+        instanceName,
+        error: importError instanceof Error ? importError.message : 'Unknown error',
+      });
+    }
     
     return {
       success: true,
