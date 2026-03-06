@@ -34,24 +34,17 @@ const WhatsAppConnectionPage: React.FC = () => {
   const MAX_QR_CODE_RETRIES = 10; // Increased from 5 to 10
   const QR_CODE_RETRY_DELAY_MS = 2000; // 2 seconds
 
-  // Check connection status on mount and periodically when idle/error
+  // Check connection status on mount only
   useEffect(() => {
     checkConnectionStatus();
     
-    // CRITICAL FIX: Periodic status check when idle or error
-    const statusCheckInterval = setInterval(() => {
-      if (pageStatus === 'idle' || pageStatus === 'error') {
-        checkConnectionStatus();
-      }
-    }, 10000); // Check every 10 seconds
-    
+    // Cleanup: stop polling when component unmounts
     return () => {
-      clearInterval(statusCheckInterval);
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
     };
-  }, [pageStatus]);
+  }, []); // Run only once on mount
 
   const checkConnectionStatus = async () => {
     try {
@@ -65,9 +58,9 @@ const WhatsAppConnectionPage: React.FC = () => {
           connectedAt: response.connectedAt || new Date().toISOString(),
         });
       } else if (response.status === 'connecting') {
-        setPageStatus('waiting_scan');
-        // If connecting, try to get QR code
-        await fetchQRCode();
+        // Don't call fetchQRCode here - it causes conflicts
+        // Just set the status, the user needs to manually connect
+        setPageStatus('idle');
       } else {
         setPageStatus('idle');
       }
