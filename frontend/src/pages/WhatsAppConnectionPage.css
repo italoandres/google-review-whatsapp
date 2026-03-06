@@ -133,6 +133,30 @@
   color: #6c757d;
 }
 
+/* Retry Info */
+.retry-info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+}
+
+.retry-text {
+  margin: 0 0 0.75rem 0;
+  color: #856404;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.retry-info .progress-bar {
+  background: #fff8e1;
+}
+
+.retry-info .progress-fill {
+  background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
+}
+
 /* Success State */
 .success-message {
   text-align: center;

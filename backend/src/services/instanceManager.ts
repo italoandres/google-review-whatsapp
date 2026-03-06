@@ -16,7 +16,11 @@ import {
   deleteWhatsAppInstance,
   WhatsAppInstance,
 } from '../models/whatsappInstance';
-import { RateLimiter, createRateLimitKey, RateLimitConfigs } from '../utils/rateLimiter';
+import { RateLimitConfigs } from '../utils/rateLimiter';
+import { 
+  incrementRateLimit, 
+  isRateLimited as checkRateLimit 
+} from '../models/rateLimitRecord';
 import { getConfig } from '../config/environment';
 
 export interface InstanceData {
@@ -53,12 +57,10 @@ export class RateLimitError extends Error {
 
 export class InstanceManagerService {
   private evolutionClient: EvolutionAPIClient;
-  private rateLimiter: RateLimiter;
   private backendUrl: string;
 
   constructor() {
     this.evolutionClient = new EvolutionAPIClient();
-    this.rateLimiter = new RateLimiter();
     const config = getConfig();
     this.backendUrl = config.backend.url;
   }
@@ -75,22 +77,30 @@ export class InstanceManagerService {
    * Validates: Requirements 1.1, 1.2, 1.3, 1.5
    */
   async createInstance(userId: string): Promise<InstanceData> {
-    // Check rate limit
-    const rateLimitKey = createRateLimitKey(userId, 'create-instance');
-    if (this.rateLimiter.isRateLimited(
-      rateLimitKey,
-      RateLimitConfigs.INSTANCE_CREATION.maxRequests,
-      RateLimitConfigs.INSTANCE_CREATION.windowMs
-    )) {
-      const retryAfter = this.rateLimiter.getRetryAfter(
-        rateLimitKey,
-        RateLimitConfigs.INSTANCE_CREATION.windowMs
-      );
+    // Check rate limit using Supabase
+    const rateLimitCheck = await checkRateLimit(
+      userId,
+      'create-instance',
+      RateLimitConfigs.INSTANCE_CREATION.maxRequests
+    );
+
+    if (rateLimitCheck.limited) {
+      const resetTime = new Date(rateLimitCheck.resetTime!);
+      const now = new Date();
+      const retryAfter = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+      
       throw new RateLimitError(
         'Too many instance creation requests. Please try again later.',
         retryAfter
       );
     }
+
+    // Increment rate limit counter
+    await incrementRateLimit({
+      userId,
+      endpoint: 'create-instance',
+      windowDurationMs: RateLimitConfigs.INSTANCE_CREATION.windowMs,
+    });
 
     // Generate instance name in format "user-{userId}"
     const instanceName = this.generateInstanceName(userId);
@@ -192,22 +202,30 @@ export class InstanceManagerService {
    * Validates: Requirements 3.2, 3.4, 14.1, 14.6
    */
   async getQRCode(userId: string): Promise<string> {
-    // Check rate limit (1 per minute)
-    const rateLimitKey = createRateLimitKey(userId, 'qr-code');
-    if (this.rateLimiter.isRateLimited(
-      rateLimitKey,
-      RateLimitConfigs.QR_CODE_GENERATION.maxRequests,
-      RateLimitConfigs.QR_CODE_GENERATION.windowMs
-    )) {
-      const retryAfter = this.rateLimiter.getRetryAfter(
-        rateLimitKey,
-        RateLimitConfigs.QR_CODE_GENERATION.windowMs
-      );
+    // Check rate limit using Supabase
+    const rateLimitCheck = await checkRateLimit(
+      userId,
+      'qr-code',
+      RateLimitConfigs.QR_CODE_GENERATION.maxRequests
+    );
+
+    if (rateLimitCheck.limited) {
+      const resetTime = new Date(rateLimitCheck.resetTime!);
+      const now = new Date();
+      const retryAfter = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+      
       throw new RateLimitError(
         'Too many QR code requests. Please wait before requesting again.',
         retryAfter
       );
     }
+
+    // Increment rate limit counter
+    await incrementRateLimit({
+      userId,
+      endpoint: 'qr-code',
+      windowDurationMs: RateLimitConfigs.QR_CODE_GENERATION.windowMs,
+    });
 
     // Get instance from database
     const instance = await getWhatsAppInstanceByUserId(userId);

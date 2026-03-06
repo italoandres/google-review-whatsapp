@@ -27,9 +27,12 @@ const WhatsAppConnectionPage: React.FC = () => {
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [pollingAttempts, setPollingAttempts] = useState(0);
+  const [qrCodeRetryAttempt, setQrCodeRetryAttempt] = useState(0);
 
   const MAX_POLLING_ATTEMPTS = 120; // 6 minutes (120 * 3 seconds)
   const POLLING_INTERVAL_MS = 3000; // 3 seconds
+  const MAX_QR_CODE_RETRIES = 10; // Increased from 5 to 10
+  const QR_CODE_RETRY_DELAY_MS = 2000; // 2 seconds
 
   // Check connection status on mount and periodically when idle/error
   useEffect(() => {
@@ -175,13 +178,16 @@ const WhatsAppConnectionPage: React.FC = () => {
     }
   };
 
-  const fetchQRCode = async (retries = 5) => {
+  const fetchQRCode = async (retries = MAX_QR_CODE_RETRIES) => {
     for (let attempt = 0; attempt < retries; attempt++) {
+      setQrCodeRetryAttempt(attempt + 1);
+      
       try {
         const response = await whatsappApi.getQRCode();
         setQrCode(response.qrCode);
         setPageStatus('waiting_scan');
         setConnectionStatus('connecting');
+        setQrCodeRetryAttempt(0); // Reset counter on success
         startPolling();
         return; // Success!
       } catch (error) {
@@ -189,12 +195,14 @@ const WhatsAppConnectionPage: React.FC = () => {
         
         // If 404 and not last attempt, wait and retry
         if (axiosError.response?.status === 404 && attempt < retries - 1) {
-          console.log(`QR code not ready yet, retrying in 2s... (attempt ${attempt + 1}/${retries})`);
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+          console.log(`QR code not ready yet, retrying in ${QR_CODE_RETRY_DELAY_MS/1000}s... (attempt ${attempt + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, QR_CODE_RETRY_DELAY_MS));
           continue;
         }
         
         // Last attempt or other error
+        setQrCodeRetryAttempt(0); // Reset counter
+        
         if (axiosError.response?.status === 404) {
           setErrorMessage('QR Code não disponível após várias tentativas. Tente novamente.');
         } else if (axiosError.response?.status === 429) {
@@ -211,6 +219,7 @@ const WhatsAppConnectionPage: React.FC = () => {
 
   const handleRefreshQRCode = async () => {
     setErrorMessage(null);
+    setQrCodeRetryAttempt(0);
     stopPolling();
     await fetchQRCode();
   };
@@ -296,6 +305,19 @@ const WhatsAppConnectionPage: React.FC = () => {
             <div className="spinner-large"></div>
             <h2>Criando instância...</h2>
             <p>Aguarde enquanto preparamos sua conexão WhatsApp</p>
+            {qrCodeRetryAttempt > 0 && (
+              <div className="retry-info">
+                <p className="retry-text">
+                  Gerando QR code... (tentativa {qrCodeRetryAttempt} de {MAX_QR_CODE_RETRIES})
+                </p>
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{ width: `${(qrCodeRetryAttempt / MAX_QR_CODE_RETRIES) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
