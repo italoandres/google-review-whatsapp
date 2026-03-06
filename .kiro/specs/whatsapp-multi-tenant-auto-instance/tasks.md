@@ -260,8 +260,8 @@ A implementação seguirá uma abordagem incremental, construindo primeiro a inf
     - Testar isolamento entre usuários
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
-- [ ] 11. Implementar endpoint de webhook
-  - [ ] 11.1 Criar endpoint POST /api/webhooks/evolution
+- [x] 11. Implementar endpoint de webhook
+  - [x] 11.1 Criar endpoint POST /api/webhooks/evolution
     - Validar assinatura no header x-evolution-signature
     - Retornar 401 se assinatura inválida
     - Chamar WebhookHandler.handleEvent
@@ -315,8 +315,8 @@ A implementação seguirá uma abordagem incremental, construindo primeiro a inf
 - [ ] 14. Checkpoint - Validar todos endpoints backend
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Implementar componentes React - Conexão WhatsApp
-  - [ ] 15.1 Criar página WhatsAppConnectionPage
+- [x] 15. Implementar componentes React - Conexão WhatsApp
+  - [x] 15.1 Criar página WhatsAppConnectionPage
     - Implementar estados: idle, creating, waiting_scan, connected, error
     - Adicionar botão "Conectar WhatsApp"
     - Exibir QR Code quando disponível
@@ -325,20 +325,20 @@ A implementação seguirá uma abordagem incremental, construindo primeiro a inf
     - Exibir mensagens de erro amigáveis
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
   
-  - [ ] 15.2 Criar componente QRCodeDisplay
+  - [x] 15.2 Criar componente QRCodeDisplay
     - Exibir imagem do QR Code em base64
     - Adicionar botão de refresh
     - Mostrar contador de expiração (opcional)
     - _Requirements: 6.3_
   
-  - [ ] 15.3 Criar componente ConnectionStatusIndicator
+  - [x] 15.3 Criar componente ConnectionStatusIndicator
     - Exibir status atual da conexão
     - Mostrar timestamp da última conexão
     - Adicionar botões "Desconectar" e "Reconectar"
     - _Requirements: 8.1, 8.2, 8.4_
 
-- [ ] 16. Implementar polling automático no frontend
-  - [ ] 16.1 Adicionar polling de status na WhatsAppConnectionPage
+- [x] 16. Implementar polling automático no frontend
+  - [x] 16.1 Adicionar polling de status na WhatsAppConnectionPage
     - Iniciar polling quando QR Code é exibido
     - Verificar status a cada 3 segundos
     - Parar polling quando status muda para "connected"
@@ -353,25 +353,25 @@ A implementação seguirá uma abordagem incremental, construindo primeiro a inf
     - Testar limite de tentativas
     - _Requirements: 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 17. Implementar gerenciamento de conexão existente
-  - [ ] 17.1 Adicionar lógica de verificação de conexão existente
+- [x] 17. Implementar gerenciamento de conexão existente
+  - [x] 17.1 Adicionar lógica de verificação de conexão existente
     - Verificar status ao carregar página
     - Exibir interface apropriada baseada no status
     - _Requirements: 8.1, 15.6_
   
-  - [ ] 17.2 Implementar funcionalidade de desconexão
+  - [x] 17.2 Implementar funcionalidade de desconexão
     - Adicionar confirmação via modal
     - Chamar endpoint de disconnect
     - Atualizar UI após desconexão
     - _Requirements: 8.2, 8.3_
   
-  - [ ] 17.3 Implementar funcionalidade de reconexão
+  - [x] 17.3 Implementar funcionalidade de reconexão
     - Chamar endpoint de reconnect
     - Exibir novo QR Code
     - Reiniciar polling de status
     - _Requirements: 8.4, 8.5_
   
-  - [ ] 17.4 Implementar troca de número
+  - [x] 17.4 Implementar troca de número
     - Adicionar botão "Trocar Número"
     - Confirmar ação com modal
     - Desconectar instância atual

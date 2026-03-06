@@ -45,8 +45,8 @@ function isRateLimited(instanceName: string): boolean {
 }
 
 /**
- * POST /api/webhooks/evolution
- * Receive and process Evolution API webhook events
+ * POST /api/webhooks/evolution-import
+ * Receive and process Evolution API webhook events for auto-import feature
  * 
  * This endpoint:
  * 1. Validates webhook signature
@@ -57,7 +57,7 @@ function isRateLimited(instanceName: string): boolean {
  * 
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.6, 2.7, 3.1, 3.2, 3.3, 3.4, 3.5
  */
-router.post('/webhooks/evolution', async (req: Request, res: Response) => {
+router.post('/webhooks/evolution-import', async (req: Request, res: Response) => {
   try {
     const payload = req.body;
     const signature = req.headers['x-evolution-signature'] as string;

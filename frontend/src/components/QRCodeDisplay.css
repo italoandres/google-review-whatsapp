@@ -1,0 +1,75 @@
+.qrcode-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qrcode-container {
+  padding: 1rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.qrcode-image {
+  display: block;
+  width: 280px;
+  height: 280px;
+  object-fit: contain;
+}
+
+.qrcode-instructions {
+  text-align: left;
+  max-width: 400px;
+}
+
+.qrcode-instructions h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.qrcode-instructions ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+  color: #555;
+}
+
+.qrcode-instructions li {
+  margin-bottom: 0.5rem;
+}
+
+.qrcode-expiry {
+  padding: 0.5rem 1rem;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 0.9rem;
+}
+
+.qrcode-expiry p {
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .qrcode-display {
+    padding: 1rem;
+  }
+
+  .qrcode-image {
+    width: 240px;
+    height: 240px;
+  }
+
+  .qrcode-instructions {
+    max-width: 100%;
+  }
+}

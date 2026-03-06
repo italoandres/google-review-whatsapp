@@ -1,0 +1,327 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { whatsappApi } from '../services/api';
+import QRCodeDisplay from '../components/QRCodeDisplay';
+import ConnectionStatusIndicator from '../components/ConnectionStatusIndicator';
+import { AxiosError } from 'axios';
+import './WhatsAppConnectionPage.css';
+
+type PageStatus = 'idle' | 'creating' | 'waiting_scan' | 'connected' | 'error';
+type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+
+interface ConnectionInfo {
+  instanceName: string;
+  connectedAt?: string;
+  phoneNumber?: string;
+}
+
+interface ErrorResponse {
+  message: string;
+  code?: string;
+}
+
+const WhatsAppConnectionPage: React.FC = () => {
+  const [pageStatus, setPageStatus] = useState<PageStatus>('idle');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [pollingAttempts, setPollingAttempts] = useState(0);
+
+  const MAX_POLLING_ATTEMPTS = 60; // 3 minutes (60 * 3 seconds)
+  const POLLING_INTERVAL_MS = 3000; // 3 seconds
+
+  // Check connection status on mount
+  useEffect(() => {
+    checkConnectionStatus();
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, []);
+
+  const checkConnectionStatus = async () => {
+    try {
+      const response = await whatsappApi.getConnectionStatus();
+      setConnectionStatus(response.status);
+      
+      if (response.status === 'connected') {
+        setPageStatus('connected');
+        setConnectionInfo({
+          instanceName: response.instanceName,
+          connectedAt: response.connectedAt,
+        });
+      } else if (response.status === 'connecting') {
+        setPageStatus('waiting_scan');
+        // If connecting, try to get QR code
+        await fetchQRCode();
+      } else {
+        setPageStatus('idle');
+      }
+    } catch (error) {
+      console.error('Error checking connection status:', error);
+      setPageStatus('idle');
+    }
+  };
+
+  const startPolling = useCallback(() => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+
+    setPollingAttempts(0);
+
+    const interval = setInterval(async () => {
+      setPollingAttempts((prev) => {
+        const newAttempts = prev + 1;
+
+        if (newAttempts >= MAX_POLLING_ATTEMPTS) {
+          clearInterval(interval);
+          setErrorMessage(
+            'Tempo limite excedido. Por favor, gere um novo QR Code.'
+          );
+          setPageStatus('error');
+          return newAttempts;
+        }
+
+        return newAttempts;
+      });
+
+      try {
+        const response = await whatsappApi.getConnectionStatus();
+        setConnectionStatus(response.status);
+
+        if (response.status === 'connected') {
+          clearInterval(interval);
+          setPageStatus('connected');
+          setConnectionInfo({
+            instanceName: response.instanceName,
+            connectedAt: response.connectedAt,
+          });
+        }
+      } catch (error) {
+        console.error('Error polling connection status:', error);
+      }
+    }, POLLING_INTERVAL_MS);
+
+    setPollingInterval(interval);
+  }, [pollingInterval]);
+
+  const stopPolling = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+    setPollingAttempts(0);
+  };
+
+  const handleConnect = async () => {
+    setPageStatus('creating');
+    setErrorMessage(null);
+
+    try {
+      const response = await whatsappApi.createInstance();
+      setConnectionInfo({
+        instanceName: response.instanceName,
+      });
+
+      // Try to get QR code
+      await fetchQRCode();
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorData = axiosError.response?.data;
+      
+      let message = 'Erro ao criar instância WhatsApp';
+      
+      if (axiosError.response?.status === 429) {
+        message = 'Limite de tentativas excedido. Aguarde alguns minutos e tente novamente.';
+      } else if (errorData?.message) {
+        message = errorData.message;
+      }
+
+      setErrorMessage(message);
+      setPageStatus('error');
+    }
+  };
+
+  const fetchQRCode = async () => {
+    try {
+      const response = await whatsappApi.getQRCode();
+      setQrCode(response.qrCode);
+      setPageStatus('waiting_scan');
+      setConnectionStatus('connecting');
+      startPolling();
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      
+      if (axiosError.response?.status === 404) {
+        setErrorMessage('QR Code não disponível. Aguarde alguns segundos e tente novamente.');
+      } else {
+        setErrorMessage('Erro ao obter QR Code');
+      }
+      
+      setPageStatus('error');
+    }
+  };
+
+  const handleRefreshQRCode = async () => {
+    setErrorMessage(null);
+    stopPolling();
+    await fetchQRCode();
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm('Tem certeza que deseja desconectar o WhatsApp?')) {
+      return;
+    }
+
+    try {
+      await whatsappApi.disconnect();
+      stopPolling();
+      setPageStatus('idle');
+      setConnectionStatus('disconnected');
+      setConnectionInfo(null);
+      setQrCode(null);
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorData = axiosError.response?.data;
+      setErrorMessage(errorData?.message || 'Erro ao desconectar WhatsApp');
+    }
+  };
+
+  const handleReconnect = async () => {
+    setErrorMessage(null);
+    setPageStatus('creating');
+
+    try {
+      const response = await whatsappApi.reconnect();
+      setQrCode(response.qrCode);
+      setConnectionInfo({
+        instanceName: response.instanceName,
+      });
+      setPageStatus('waiting_scan');
+      setConnectionStatus('connecting');
+      startPolling();
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorData = axiosError.response?.data;
+      setErrorMessage(errorData?.message || 'Erro ao reconectar WhatsApp');
+      setPageStatus('error');
+    }
+  };
+
+  return (
+    <div className="whatsapp-connection-page">
+      <div className="page-header">
+        <h1>Conexão WhatsApp</h1>
+        <p className="subtitle">
+          Conecte seu WhatsApp para enviar mensagens automaticamente
+        </p>
+      </div>
+
+      {errorMessage && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          {errorMessage}
+        </div>
+      )}
+
+      {pageStatus === 'idle' && (
+        <div className="connection-card">
+          <div className="idle-state">
+            <div className="whatsapp-icon">📱</div>
+            <h2>WhatsApp não conectado</h2>
+            <p>
+              Conecte seu WhatsApp para começar a enviar mensagens de solicitação
+              de avaliação automaticamente.
+            </p>
+            <button 
+              onClick={handleConnect}
+              className="btn btn-primary btn-large"
+            >
+              Conectar WhatsApp
+            </button>
+          </div>
+        </div>
+      )}
+
+      {pageStatus === 'creating' && (
+        <div className="connection-card">
+          <div className="loading-state">
+            <div className="spinner-large"></div>
+            <h2>Criando instância...</h2>
+            <p>Aguarde enquanto preparamos sua conexão WhatsApp</p>
+          </div>
+        </div>
+      )}
+
+      {pageStatus === 'waiting_scan' && qrCode && (
+        <div className="connection-card">
+          <QRCodeDisplay 
+            qrCode={qrCode}
+            onRefresh={handleRefreshQRCode}
+          />
+          <div className="polling-info">
+            <p>
+              Aguardando conexão... (Tentativa {pollingAttempts} de {MAX_POLLING_ATTEMPTS})
+            </p>
+          </div>
+        </div>
+      )}
+
+      {pageStatus === 'connected' && connectionInfo && (
+        <div className="connection-card">
+          <div className="success-message">
+            <span className="success-icon">✅</span>
+            <h2>WhatsApp conectado com sucesso!</h2>
+            <p>Sua instância está ativa e pronta para enviar mensagens.</p>
+          </div>
+
+          <ConnectionStatusIndicator
+            status={connectionStatus}
+            lastConnected={connectionInfo.connectedAt}
+            onDisconnect={handleDisconnect}
+          />
+
+          {connectionInfo.instanceName && (
+            <div className="instance-info">
+              <p>
+                <strong>Instância:</strong> {connectionInfo.instanceName}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {pageStatus === 'error' && (
+        <div className="connection-card">
+          <div className="error-state">
+            <div className="error-icon-large">❌</div>
+            <h2>Erro na conexão</h2>
+            <p>{errorMessage}</p>
+            <div className="error-actions">
+              <button 
+                onClick={handleConnect}
+                className="btn btn-primary"
+              >
+                Tentar Novamente
+              </button>
+              <button 
+                onClick={() => {
+                  setPageStatus('idle');
+                  setErrorMessage(null);
+                }}
+                className="btn btn-secondary"
+              >
+                Voltar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default WhatsAppConnectionPage;

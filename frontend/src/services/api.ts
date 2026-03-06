@@ -110,6 +110,34 @@ export interface RequestReviewResponse {
   client: Client;
 }
 
+// WhatsApp Instance Types
+export interface WhatsAppInstance {
+  instanceName: string;
+  status: string;
+  qrCode?: string;
+}
+
+export interface ConnectionStatusResponse {
+  status: 'disconnected' | 'connecting' | 'connected';
+  instanceName: string;
+  connectedAt?: string;
+}
+
+export interface QRCodeResponse {
+  qrCode: string;
+  expiresIn?: number;
+}
+
+export interface DisconnectResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface ReconnectResponse {
+  qrCode: string;
+  instanceName: string;
+}
+
 // API de Negócio
 export const businessApi = {
   getConfig: async (): Promise<Business> => {
@@ -173,6 +201,34 @@ export const clientsApi = {
 
   getMetrics: async (): Promise<Metrics> => {
     const response = await api.get<Metrics>('/clients/metrics');
+    return response.data;
+  },
+};
+
+// API de WhatsApp Instance
+export const whatsappApi = {
+  createInstance: async (): Promise<WhatsAppInstance> => {
+    const response = await api.post<WhatsAppInstance>('/evolution/create-instance');
+    return response.data;
+  },
+
+  getQRCode: async (): Promise<QRCodeResponse> => {
+    const response = await api.get<QRCodeResponse>('/evolution/qrcode');
+    return response.data;
+  },
+
+  getConnectionStatus: async (): Promise<ConnectionStatusResponse> => {
+    const response = await api.get<ConnectionStatusResponse>('/evolution/connection-status');
+    return response.data;
+  },
+
+  disconnect: async (): Promise<DisconnectResponse> => {
+    const response = await api.post<DisconnectResponse>('/evolution/disconnect');
+    return response.data;
+  },
+
+  reconnect: async (): Promise<ReconnectResponse> => {
+    const response = await api.post<ReconnectResponse>('/evolution/reconnect');
     return response.data;
   },
 };

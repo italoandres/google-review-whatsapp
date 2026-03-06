@@ -13,6 +13,7 @@ import businessRoutes from './routes/business';
 import clientsRoutes from './routes/clients';
 import evolutionRoutes from './routes/evolution';
 import whatsappInstanceRoutes from './routes/whatsappInstance';
+import webhookRoutes from './routes/webhook';
 
 const app = express();
 const PORT = config.app.port;
@@ -36,6 +37,7 @@ app.use('/api/business', businessRoutes);
 app.use('/api/clients', clientsRoutes);
 app.use('/api', evolutionRoutes);
 app.use('/api/evolution', whatsappInstanceRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Rota de health check
 app.get('/health', (req: Request, res: Response) => {

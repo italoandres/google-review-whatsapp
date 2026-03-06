@@ -67,7 +67,7 @@ describe('Evolution Webhook Endpoint', () => {
     jest.clearAllMocks();
   });
 
-  describe('POST /api/webhooks/evolution - Valid webhook processing', () => {
+  describe('POST /api/webhooks/evolution-import - Valid webhook processing', () => {
     it('should successfully process valid webhook and create client', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -125,7 +125,7 @@ describe('Evolution Webhook Endpoint', () => {
       });
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'valid-signature')
         .send(payload);
 
@@ -151,7 +151,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Invalid signature rejection', () => {
+  describe('POST /api/webhooks/evolution-import - Invalid signature rejection', () => {
     it('should reject webhook with invalid signature', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -187,7 +187,7 @@ describe('Evolution Webhook Endpoint', () => {
       (signatureValidator.validateSignature as jest.Mock).mockReturnValue(false);
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'invalid-signature')
         .send(payload);
 
@@ -228,7 +228,7 @@ describe('Evolution Webhook Endpoint', () => {
       });
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .send(payload);
 
       expect(response.status).toBe(401);
@@ -239,7 +239,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Missing fields handling', () => {
+  describe('POST /api/webhooks/evolution-import - Missing fields handling', () => {
     it('should reject webhook with missing instance', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -247,7 +247,7 @@ describe('Evolution Webhook Endpoint', () => {
       };
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'signature')
         .send(payload);
 
@@ -260,7 +260,7 @@ describe('Evolution Webhook Endpoint', () => {
 
     it('should reject webhook with empty payload', async () => {
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'signature')
         .send({});
 
@@ -272,7 +272,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Duplicate phone handling', () => {
+  describe('POST /api/webhooks/evolution-import - Duplicate phone handling', () => {
     it('should skip client creation for duplicate phone', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -316,7 +316,7 @@ describe('Evolution Webhook Endpoint', () => {
       (clientModel.checkPhoneExists as jest.Mock).mockResolvedValue(true);
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'valid-signature')
         .send(payload);
 
@@ -331,7 +331,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Rate limiting', () => {
+  describe('POST /api/webhooks/evolution-import - Rate limiting', () => {
     it('should enforce rate limiting after 100 requests', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -377,7 +377,7 @@ describe('Evolution Webhook Endpoint', () => {
       // Make 100 requests (should all succeed)
       for (let i = 0; i < 100; i++) {
         const response = await request(app)
-          .post('/api/webhooks/evolution')
+          .post('/api/webhooks/evolution-import')
           .set('x-evolution-signature', 'valid-signature')
           .send(payload);
         
@@ -386,7 +386,7 @@ describe('Evolution Webhook Endpoint', () => {
 
       // 101st request should be rate limited
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'valid-signature')
         .send(payload);
 
@@ -399,7 +399,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Invalid instance', () => {
+  describe('POST /api/webhooks/evolution-import - Invalid instance', () => {
     it('should reject webhook for non-existent instance', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -421,7 +421,7 @@ describe('Evolution Webhook Endpoint', () => {
       });
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'signature')
         .send(payload);
 
@@ -453,7 +453,7 @@ describe('Evolution Webhook Endpoint', () => {
       });
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'signature')
         .send(payload);
 
@@ -465,7 +465,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Contact extraction edge cases', () => {
+  describe('POST /api/webhooks/evolution-import - Contact extraction edge cases', () => {
     it('should acknowledge but not process when contact extraction returns null', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -503,7 +503,7 @@ describe('Evolution Webhook Endpoint', () => {
       (contactExtractor.extractContact as jest.Mock).mockReturnValue(null);
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'valid-signature')
         .send(payload);
 
@@ -519,7 +519,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Phone normalization failures', () => {
+  describe('POST /api/webhooks/evolution-import - Phone normalization failures', () => {
     it('should reject webhook when phone normalization fails', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -561,7 +561,7 @@ describe('Evolution Webhook Endpoint', () => {
       (phoneNormalizer.normalizePhone as jest.Mock).mockReturnValue('');
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'valid-signature')
         .send(payload);
 
@@ -575,7 +575,7 @@ describe('Evolution Webhook Endpoint', () => {
     });
   });
 
-  describe('POST /api/webhooks/evolution - Error handling', () => {
+  describe('POST /api/webhooks/evolution-import - Error handling', () => {
     it('should return 500 when client creation fails', async () => {
       const payload = {
         event: 'messages.upsert',
@@ -621,7 +621,7 @@ describe('Evolution Webhook Endpoint', () => {
       );
 
       const response = await request(app)
-        .post('/api/webhooks/evolution')
+        .post('/api/webhooks/evolution-import')
         .set('x-evolution-signature', 'valid-signature')
         .send(payload);
 

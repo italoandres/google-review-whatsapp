@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import ClientsPage from './pages/ClientsPage';
 import ConfigPage from './pages/ConfigPage';
 import EvolutionConfigPage from './pages/EvolutionConfigPage';
+import WhatsAppConnectionPage from './pages/WhatsAppConnectionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -67,6 +68,17 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <Layout>
                   <EvolutionConfigPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/whatsapp-connection"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <WhatsAppConnectionPage />
                 </Layout>
               </ProtectedRoute>
             }
