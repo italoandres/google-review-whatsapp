@@ -206,11 +206,11 @@ export function createRateLimitKey(userId: string, endpoint?: string): string {
  */
 export const RateLimitConfigs = {
   INSTANCE_CREATION: {
-    maxRequests: 3,
+    maxRequests: 20, // Aumentado de 3 para 20
     windowMs: 10 * 60 * 1000, // 10 minutes
   },
   QR_CODE_GENERATION: {
-    maxRequests: 1,
+    maxRequests: 30, // Aumentado de 1 para 30
     windowMs: 60 * 1000, // 1 minute
   },
   WEBHOOK_EVENTS: {
@@ -218,7 +218,7 @@ export const RateLimitConfigs = {
     windowMs: 60 * 1000, // 1 minute
   },
   CONNECTION_STATUS: {
-    maxRequests: 60,
-    windowMs: 60 * 1000, // 1 minute (1 per second)
+    maxRequests: 120, // Aumentado de 60 para 120
+    windowMs: 60 * 1000, // 1 minute (2 per second)
   },
 } as const;
