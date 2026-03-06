@@ -175,23 +175,37 @@ const WhatsAppConnectionPage: React.FC = () => {
     }
   };
 
-  const fetchQRCode = async () => {
-    try {
-      const response = await whatsappApi.getQRCode();
-      setQrCode(response.qrCode);
-      setPageStatus('waiting_scan');
-      setConnectionStatus('connecting');
-      startPolling();
-    } catch (error) {
-      const axiosError = error as AxiosError<ErrorResponse>;
-      
-      if (axiosError.response?.status === 404) {
-        setErrorMessage('QR Code não disponível. Aguarde alguns segundos e tente novamente.');
-      } else {
-        setErrorMessage('Erro ao obter QR Code');
+  const fetchQRCode = async (retries = 5) => {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const response = await whatsappApi.getQRCode();
+        setQrCode(response.qrCode);
+        setPageStatus('waiting_scan');
+        setConnectionStatus('connecting');
+        startPolling();
+        return; // Success!
+      } catch (error) {
+        const axiosError = error as AxiosError<ErrorResponse>;
+        
+        // If 404 and not last attempt, wait and retry
+        if (axiosError.response?.status === 404 && attempt < retries - 1) {
+          console.log(`QR code not ready yet, retrying in 2s... (attempt ${attempt + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+          continue;
+        }
+        
+        // Last attempt or other error
+        if (axiosError.response?.status === 404) {
+          setErrorMessage('QR Code não disponível após várias tentativas. Tente novamente.');
+        } else if (axiosError.response?.status === 429) {
+          setErrorMessage('Limite de tentativas excedido. Aguarde alguns minutos.');
+        } else {
+          setErrorMessage('Erro ao obter QR Code');
+        }
+        
+        setPageStatus('error');
+        return;
       }
-      
-      setPageStatus('error');
     }
   };
 
