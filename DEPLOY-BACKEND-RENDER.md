@@ -1,64 +1,45 @@
-# 🚀 Guia de Deploy do Backend no Render
+# 🚀 Guia de Deploy do Backend no Render (Supabase)
+
+## ⚠️ IMPORTANTE - Sistema Migrado para Supabase
+
+Este sistema foi **migrado de SQLite para Supabase (PostgreSQL)**. Não há mais banco de dados local!
 
 ## Pré-requisitos
 
 - ✅ Conta no Render (https://render.com)
-- ✅ Repositório Git (GitHub, GitLab ou Bitbucket)
+- ✅ Repositório Git no GitHub
 - ✅ Código do backend commitado
-
-## Correção Aplicada
-
-### ✅ Schema.sql em Produção
-
-**Problema:** Em produção, `__dirname` aponta para `dist/database`, mas o `schema.sql` está em `src/database`.
-
-**Solução:** Alterado `backend/src/database/init.ts` para detectar automaticamente o contexto:
-
-```typescript
-// Detectar se estamos na pasta backend ou na raiz do projeto
-const cwd = process.cwd();
-const isInBackendFolder = cwd.endsWith('backend') || cwd.includes('backend\\') && !cwd.includes('backend\\backend');
-
-// Construir caminho correto baseado no contexto
-const schemaPath = isInBackendFolder
-  ? path.join(cwd, 'src', 'database', 'schema.sql')
-  : path.join(cwd, 'backend', 'src', 'database', 'schema.sql');
-```
-
-**Funciona em:**
-- ✔️ Local (executando de dentro da pasta backend)
-- ✔️ Local (executando da raiz do projeto)
-- ✔️ Render (Root Directory = backend)
-- ✔️ Render (Root Directory = .)
-- ✔️ Não depende de build
-- ✔️ Não exige cópia manual
-
-Agora funciona tanto localmente quanto em produção! ✅
+- ✅ Tabelas criadas no Supabase
+- ✅ Chaves do Supabase (URL, ANON_KEY, SERVICE_KEY)
 
 ## Passo a Passo - Deploy no Render
 
-### 1. Preparar o Repositório
+### 1. Verificar Repositório
+
+O código já está no GitHub! ✅
 
 ```bash
-git add .
-git commit -m "Fix: Corrigir caminho schema.sql para produção"
-git push origin main
+# Verificar status
+git status
+
+# Ver último commit
+git log --oneline -1
 ```
 
 ### 2. Criar Web Service no Render
 
 1. Acesse https://dashboard.render.com
-2. Clique em "New +" → "Web Service"
-3. Conecte seu repositório Git
-4. Selecione o repositório do projeto
+2. Clique em **"New +"** → **"Web Service"**
+3. Conecte seu repositório GitHub
+4. Selecione o repositório `google-review-whatsapp` (ou o nome que você deu)
 
 ### 3. Configurar o Service
 
-**Name:** `google-review-backend` (ou outro nome)
+**Name:** `google-review-whatsapp` (ou outro nome)
 
-**Region:** Escolha a região mais próxima
+**Region:** `Oregon (US West)` (ou mais próximo de você)
 
-**Branch:** `main` (ou sua branch principal)
+**Branch:** `main`
 
 **Root Directory:** `backend`
 
@@ -66,48 +47,62 @@ git push origin main
 
 **Build Command:**
 ```bash
-npm install && npm run build && npm run init-db
+npm install && npm run build
 ```
+
+⚠️ **IMPORTANTE:** Removemos `npm run init-db` porque não há mais banco local!
 
 **Start Command:**
 ```bash
 npm start
 ```
 
+**Instance Type:** Selecione **"Free"** (grátis)
+
 ### 4. Configurar Variáveis de Ambiente
 
-No painel do Render, adicione:
+Clique em **"Advanced"** → **"Add Environment Variable"**
 
-| Key | Value | Descrição |
-|-----|-------|-----------|
-| `PORT` | `3000` | Porta do servidor |
-| `JWT_SECRET` | `sua-chave-secreta-forte-aqui` | Chave para JWT (mude!) |
-| `DATABASE_PATH` | `/opt/render/project/src/backend/database/app.db` | Caminho do banco |
-| `NODE_ENV` | `production` | Ambiente |
+Adicione estas variáveis (copie e cole):
 
-**⚠️ IMPORTANTE:** Mude o `JWT_SECRET` para uma chave forte e única!
+| Key | Value |
+|-----|-------|
+| `SUPABASE_URL` | `https://cuychbunipzwfaitnbor.supabase.co` |
+| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1eWNoYnVuaXB6d2ZhaXRuYm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4ODc2NDgsImV4cCI6MjA4MzQ2MzY0OH0.JfKaw-b5Siw_7ilrqUCt_kUe7xi-2RJMaO76maV8yhU` |
+| `SUPABASE_SERVICE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1eWNoYnVuaXB6d2ZhaXRuYm9yIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzg4NzY0OCwiZXhwIjoyMDgzNDYzNjQ4fQ.Td0PWFAggP0ocaBmSoa9n7lpWMkVXC5PWawCdiCTq1Q` |
+| `NODE_ENV` | `production` |
+| `PORT` | `10000` |
 
-### 5. Configurar Disco Persistente (Opcional)
+**Nota:** O Render usa a porta 10000 por padrão, mas o código já está preparado para usar `process.env.PORT`.
 
-Para manter o banco de dados entre deploys:
+### 5. Deploy
 
-1. No painel do Render, vá em "Disks"
-2. Clique em "Add Disk"
-3. **Name:** `database`
-4. **Mount Path:** `/opt/render/project/src/backend/database`
-5. **Size:** 1 GB (suficiente)
-
-**Nota:** Sem disco persistente, o banco será recriado a cada deploy.
-
-### 6. Deploy
-
-1. Clique em "Create Web Service"
-2. Aguarde o build (3-5 minutos)
+1. Clique em **"Create Web Service"**
+2. Aguarde o build (2-5 minutos)
 3. Verifique os logs para confirmar sucesso
+
+**Logs esperados:**
+```
+✅ npm install
+✅ npm run build
+✅ Starting service...
+🚀 Servidor rodando na porta 10000
+🗄️  Usando Supabase como banco de dados
+```
+
+### 6. Anotar URL do Backend
+
+Após o deploy, anote a URL fornecida pelo Render:
+
+```
+https://google-review-whatsapp.onrender.com
+```
+
+Você vai precisar dessa URL para configurar o frontend!
 
 ### 7. Testar o Backend
 
-Acesse a URL fornecida pelo Render + `/health`:
+Acesse a URL + `/health`:
 
 ```
 https://seu-backend.onrender.com/health
@@ -117,13 +112,23 @@ Deve retornar:
 ```json
 {
   "status": "ok",
-  "timestamp": "2024-01-06T..."
+  "timestamp": "2026-01-09T..."
 }
 ```
 
-## Configurar CORS
+✅ Se retornar isso, o backend está funcionando!
 
-**IMPORTANTE:** Atualize o CORS no backend para aceitar requisições do frontend.
+## Próximos Passos
+
+Após o backend estar funcionando:
+
+1. ✅ Anote a URL do backend
+2. 📱 Configure o frontend no Netlify (veja `DEPLOY-NETLIFY.md`)
+3. 🔧 Configure CORS se necessário (veja abaixo)
+
+## Configurar CORS (se necessário)
+
+Se o frontend não conseguir conectar ao backend, atualize o CORS.
 
 Edite `backend/src/server.ts`:
 
@@ -131,112 +136,110 @@ Edite `backend/src/server.ts`:
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://seu-frontend.netlify.app'  // Adicione seu domínio Netlify
+    'https://seu-site.netlify.app'  // Adicione seu domínio Netlify
   ],
   credentials: true
 }));
 ```
 
-Commit e push para atualizar.
+Depois faça commit e push:
 
-## Atualizar Frontend
-
-No Netlify, atualize a variável de ambiente:
-
-```
-VITE_API_URL=https://seu-backend.onrender.com/api
+```bash
+git add .
+git commit -m "Configurar CORS para produção"
+git push
 ```
 
-## Estrutura de Arquivos em Produção
-
-```
-/opt/render/project/src/backend/
-├── src/
-│   ├── database/
-│   │   ├── schema.sql          ← Lido daqui!
-│   │   ├── connection.ts
-│   │   └── init.ts
-│   ├── routes/
-│   ├── models/
-│   └── server.ts
-├── dist/                        ← Código compilado
-│   └── database/
-│       └── init.js              ← Executado daqui
-├── database/
-│   └── app.db                   ← Banco de dados
-└── package.json
-```
+O Render fará deploy automaticamente! ✅
 
 ## Logs e Monitoramento
 
 ### Ver Logs
 
 No painel do Render:
-1. Vá em "Logs"
+1. Vá em **"Logs"**
 2. Veja logs em tempo real
 3. Procure por erros
 
 ### Logs Importantes
 
 ```
-✅ Conectado ao banco de dados SQLite
-✅ Banco de dados inicializado com sucesso
-🚀 Servidor rodando na porta 3000
+✅ Servidor rodando na porta 10000
+✅ Usando Supabase como banco de dados
+✅ Health check: http://localhost:10000/health
 ```
 
 ## Troubleshooting
 
-### ❌ Erro: "Cannot find module 'schema.sql'"
+### ❌ Erro: "Missing Supabase environment variables"
 
-**Solução:** Verifique se a correção do `init.ts` foi aplicada:
-```typescript
-const schemaPath = path.join(process.cwd(), 'src', 'database', 'schema.sql');
+**Solução:** Verifique se as 3 variáveis do Supabase foram adicionadas:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_KEY`
+
+### ❌ Erro: "Missing script: 'init-db'"
+
+**Solução:** O Build Command deve ser apenas:
+```bash
+npm install && npm run build
 ```
 
-### ❌ Erro: "ENOENT: no such file or directory"
-
-**Solução:** Verifique o Root Directory no Render está como `backend`.
+Remova `npm run init-db` (não existe mais!)
 
 ### ❌ Erro: "Port already in use"
 
-**Solução:** Não especifique porta fixa. Use:
+**Solução:** Não especifique porta fixa. O código já usa:
 ```typescript
 const PORT = process.env.PORT || 3000;
 ```
 
-### ❌ Banco de dados reseta a cada deploy
+### ❌ Backend retorna 500 ou 401
 
-**Solução:** Configure um disco persistente (veja passo 5).
+**Solução:** 
+1. Verifique se as tabelas foram criadas no Supabase
+2. Verifique se as chaves do Supabase estão corretas
+3. Veja os logs do Render para mais detalhes
 
 ## Planos e Custos
 
 ### Free Tier
 - ✅ 750 horas/mês
 - ✅ Builds ilimitados
-- ⚠️ Dorme após 15 min de inatividade
-- ⚠️ Sem disco persistente
+- ⚠️ Dorme após 15 min de inatividade (primeira requisição demora ~30s)
+- ✅ Perfeito para testes e projetos pessoais
 
 ### Starter ($7/mês)
 - ✅ Sempre ativo
-- ✅ Disco persistente incluído
 - ✅ Melhor performance
+- ✅ Sem tempo de espera
 
-Para este projeto, o Free Tier funciona para testes.
+Para este projeto, o **Free Tier funciona perfeitamente**!
 
 ## Checklist de Deploy
 
-- [ ] Código commitado e pushed
+- [ ] Código commitado e no GitHub ✅
 - [ ] Web Service criado no Render
 - [ ] Root Directory = `backend`
-- [ ] Build command correto
-- [ ] Start command correto
-- [ ] Variáveis de ambiente configuradas
-- [ ] JWT_SECRET alterado
-- [ ] Disco persistente configurado (opcional)
+- [ ] Build command = `npm install && npm run build`
+- [ ] Start command = `npm start`
+- [ ] Variáveis de ambiente configuradas (3 do Supabase + NODE_ENV + PORT)
 - [ ] Deploy concluído sem erros
 - [ ] `/health` retorna status ok
-- [ ] CORS configurado para frontend
-- [ ] Frontend atualizado com URL do backend
+- [ ] URL do backend anotada
+- [ ] Pronto para configurar frontend!
+
+## Deploy Automático
+
+Agora, sempre que você fizer mudanças no código:
+
+```bash
+git add .
+git commit -m "Descrição da mudança"
+git push
+```
+
+O Render fará deploy automaticamente! ✅
 
 ## Comandos Úteis
 
@@ -244,57 +247,48 @@ Para este projeto, o Free Tier funciona para testes.
 
 ```bash
 cd backend
+npm install
 npm run build
-npm run init-db
 npm start
 ```
 
-### Verificar Logs no Render
+### Ver Logs no Render
 
-```bash
-# Via CLI do Render (se instalado)
-render logs -s seu-service-name
-```
+Acesse o dashboard → Logs → Veja em tempo real
 
 ## Alternativas ao Render
 
 - **Railway:** Similar ao Render, fácil de usar
 - **Heroku:** Mais caro, mas muito estável
 - **DigitalOcean App Platform:** Bom custo-benefício
+- **Vercel:** Ótimo para Node.js, deploy automático
 - **AWS Elastic Beanstalk:** Mais complexo, mais controle
 
-## Backup do Banco de Dados
+## Vantagens do Supabase
 
-Se usar disco persistente:
-
-1. Acesse o shell do Render
-2. Copie o arquivo `database/app.db`
-3. Faça backup regularmente
-
-Ou use um banco de dados gerenciado:
-- **Render PostgreSQL** (recomendado)
-- **PlanetScale** (MySQL)
-- **MongoDB Atlas**
-
-## Migração para PostgreSQL (Futuro)
-
-Para produção séria, considere migrar de SQLite para PostgreSQL:
-
-1. Render oferece PostgreSQL gratuito
-2. Mais robusto para múltiplos acessos
-3. Backups automáticos
+✅ **Sem banco de dados local:** Não precisa de disco persistente no Render
+✅ **Backups automáticos:** Supabase faz backup automaticamente
+✅ **Escalável:** Suporta múltiplos acessos simultâneos
+✅ **Seguro:** Autenticação e RLS (Row Level Security) integrados
+✅ **Grátis:** 500MB de banco + 2GB de storage no plano gratuito
 
 ## Suporte
 
 Problemas com deploy?
 
-1. Verifique os logs no Render
-2. Teste o build localmente
-3. Verifique as variáveis de ambiente
-4. Consulte: https://render.com/docs
+1. ✅ Verifique os logs no Render
+2. ✅ Teste o build localmente
+3. ✅ Verifique as variáveis de ambiente
+4. ✅ Consulte: https://render.com/docs
+5. ✅ Veja `DEPLOY-GITHUB.md` para guia completo
 
 ## Recursos Úteis
 
-- Documentação Render: https://render.com/docs
-- Render Community: https://community.render.com
-- Node.js no Render: https://render.com/docs/deploy-node-express-app
+- 📚 Documentação Render: https://render.com/docs
+- 💬 Render Community: https://community.render.com
+- 🚀 Node.js no Render: https://render.com/docs/deploy-node-express-app
+- 🗄️ Supabase Docs: https://supabase.com/docs
+
+---
+
+**Última atualização:** 09/01/2026 - Sistema migrado para Supabase ✅

@@ -93,6 +93,7 @@ export interface Client {
   sentAt: string | null;
   reviewedAt: string | null;
   attendanceDate: string;
+  importSource?: 'manual' | 'auto-imported';
   createdAt: string;
 }
 
@@ -139,8 +140,9 @@ export const businessApi = {
 
 // API de Clientes
 export const clientsApi = {
-  getAll: async (): Promise<Client[]> => {
-    const response = await api.get<{ clients: Client[] }>('/clients');
+  getAll: async (importSource?: 'manual' | 'auto-imported'): Promise<Client[]> => {
+    const params = importSource ? { importSource } : {};
+    const response = await api.get<{ clients: Client[] }>('/clients', { params });
     return response.data.clients;
   },
 

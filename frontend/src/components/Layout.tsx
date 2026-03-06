@@ -38,6 +38,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Link to="/config" className={`nav-link ${isActive('/config')}`}>
               ⚙️ Configurações
             </Link>
+            <Link to="/evolution-config" className={`nav-link ${isActive('/evolution-config')}`}>
+              📱 WhatsApp
+            </Link>
             <button onClick={handleLogout} className="btn btn-secondary btn-sm">
               Sair
             </button>

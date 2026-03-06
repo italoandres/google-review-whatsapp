@@ -37,6 +37,7 @@ O sistema foi migrado de SQLite para **Supabase** (PostgreSQL), trazendo:
 - ✅ Histórico de solicitações de avaliação
 - ✅ Interface responsiva (desktop e mobile)
 - ✅ Dados persistentes (Supabase)
+- ✅ **NOVO:** Auto-importação de clientes do WhatsApp via Evolution API
 
 ## 🛠️ Stack Tecnológica
 
@@ -73,7 +74,54 @@ Antes de rodar o sistema, você precisa criar as tabelas no Supabase:
 
 📖 Ver guia completo: `COMO-CRIAR-TABELAS-SUPABASE.md`
 
-### 2. Método Rápido (Windows)
+### 2. Configurar Variáveis de Ambiente
+
+#### Backend (.env)
+
+O backend requer algumas variáveis de ambiente. Edite o arquivo `backend/.env`:
+
+```env
+# Porta do servidor
+PORT=3000
+
+# JWT Secret (mude em produção!)
+JWT_SECRET=sua-chave-secreta-aqui
+
+# Supabase
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_KEY=sua-service-key-aqui
+
+# IMPORTANTE: Encryption Key para WhatsApp Auto-Import
+# Gere uma chave de 64 caracteres hexadecimais (32 bytes)
+ENCRYPTION_KEY=
+```
+
+**Como gerar a ENCRYPTION_KEY:**
+
+```bash
+# No terminal, execute:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Copie o resultado (64 caracteres) e cole no .env
+# Exemplo: ENCRYPTION_KEY=a1b2c3d4e5f6...
+```
+
+⚠️ **IMPORTANTE**: A `ENCRYPTION_KEY` é usada para criptografar as credenciais da Evolution API (API Key e Webhook Secret). Sem ela, o sistema de auto-importação do WhatsApp não funcionará.
+
+#### Frontend (.env)
+
+O frontend já vem configurado, mas você pode editar `frontend/.env`:
+
+```env
+# URL do backend
+VITE_API_URL=http://localhost:3000/api
+
+# Supabase (para autenticação)
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-anon-key-aqui
+```
+
+### 3. Método Rápido (Windows)
 
 Se você está no Windows, use os scripts automáticos:
 
@@ -81,7 +129,9 @@ Se você está no Windows, use os scripts automáticos:
    - Instala todas as dependências automaticamente
    - Aguarde a conclusão (pode levar 5-10 minutos)
 
-2. **Duplo-clique em `start.bat`**
+2. **Configure a ENCRYPTION_KEY** (veja seção acima)
+
+3. **Duplo-clique em `start.bat`**
    - Inicia backend e frontend automaticamente
    - Abre 2 janelas de terminal
    - Aguarde alguns segundos e acesse: http://localhost:5173
@@ -228,6 +278,50 @@ Na primeira vez, você será direcionado para a tela de configuração:
 1. Clique em "Configurações" no menu superior
 2. Edite os campos desejados
 3. Clique em "Salvar Alterações"
+
+### 6. Configurar Auto-Importação do WhatsApp (Opcional)
+
+O sistema agora suporta auto-importação de clientes que enviam mensagens no WhatsApp via **Evolution API**:
+
+#### O que é?
+Quando alguém envia uma mensagem no WhatsApp, o sistema cadastra automaticamente como cliente.
+
+#### Como configurar:
+
+1. **Instale a Evolution API** (servidor próprio ou cloud)
+   - Documentação: https://doc.evolution-api.com/
+   - Opções: self-hosted (gratuito) ou cloud (pago)
+
+2. **Configure no sistema:**
+   - Clique em "📱 WhatsApp" no menu
+   - Preencha:
+     - **API URL**: URL da sua Evolution API (ex: `https://api.evolution.com`)
+     - **API Key**: Chave de autenticação da Evolution API
+     - **Instance Name**: Nome da instância conectada
+     - **Webhook Secret**: Senha para validar webhooks (crie uma senha forte)
+   - Clique em "Testar Conexão" para validar
+   - Ative "Auto-importação ativada"
+   - Clique em "Salvar Configuração"
+
+3. **Configure o Webhook na Evolution API:**
+   - URL do Webhook: `https://seu-backend.com/api/webhooks/evolution`
+   - Eventos: `messages.upsert`
+   - Webhook Secret: Use a mesma senha configurada no passo 2
+
+4. **Pronto!** Agora quando alguém enviar mensagem no WhatsApp:
+   - Sistema cadastra automaticamente como cliente
+   - Nome extraído do contato do WhatsApp
+   - Telefone normalizado automaticamente
+   - Marcado como "auto-importado" na lista de clientes
+
+#### Filtrar clientes por origem:
+
+Na página de Clientes, você pode filtrar por:
+- **Todos**: Mostra todos os clientes
+- **Manual**: Apenas clientes cadastrados manualmente
+- **Auto-importado**: Apenas clientes vindos do WhatsApp
+
+⚠️ **Segurança**: As credenciais da Evolution API são criptografadas com AES-256-CBC antes de serem salvas no banco de dados.
 
 ## 🧪 Executando Testes
 
@@ -393,6 +487,8 @@ MIT
 - **[CORRECOES-TYPESCRIPT.md](CORRECOES-TYPESCRIPT.md)** - Correções aplicadas para build TypeScript
 - **[DEPLOY-NETLIFY.md](DEPLOY-NETLIFY.md)** - Guia completo de deploy do frontend no Netlify
 - **[DEPLOY-BACKEND-RENDER.md](DEPLOY-BACKEND-RENDER.md)** - Guia completo de deploy do backend no Render
+- **[BACKEND-COMPLETO-WHATSAPP-AUTO-IMPORT.md](BACKEND-COMPLETO-WHATSAPP-AUTO-IMPORT.md)** - Documentação técnica do WhatsApp Auto-Import
+- **[migrations/README.md](migrations/README.md)** - Guia de migração do banco de dados para Evolution API
 
 ## 🚀 Deploy em Produção
 
@@ -413,9 +509,14 @@ Para fazer deploy do backend no Render, consulte: **[DEPLOY-BACKEND-RENDER.md](D
 **Resumo rápido:**
 1. Crie Web Service no Render
 2. Configure: Root directory = `backend`, Build = `npm install && npm run build && npm run init-db`
-3. Adicione variáveis: `JWT_SECRET`, `DATABASE_PATH`, `NODE_ENV=production`
+3. Adicione variáveis: `JWT_SECRET`, `DATABASE_PATH`, `NODE_ENV=production`, **`ENCRYPTION_KEY`**
 4. Configure disco persistente para o banco de dados
 5. Atualize CORS no backend para aceitar domínio do frontend
+
+**⚠️ Importante para WhatsApp Auto-Import:**
+- Gere uma `ENCRYPTION_KEY` e adicione nas variáveis de ambiente
+- Configure a URL do webhook na Evolution API: `https://seu-backend.render.com/api/webhooks/evolution`
+- Aplique a migration SQL no Supabase antes do deploy (veja `migrations/README.md`)
 
 **⚠️ Correção Importante:** O caminho do `schema.sql` foi corrigido para funcionar em produção usando `process.cwd()` ao invés de `__dirname`.
 

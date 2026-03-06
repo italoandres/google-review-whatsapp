@@ -6,6 +6,7 @@ import SetupPage from './pages/SetupPage';
 import DashboardPage from './pages/DashboardPage';
 import ClientsPage from './pages/ClientsPage';
 import ConfigPage from './pages/ConfigPage';
+import EvolutionConfigPage from './pages/EvolutionConfigPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -55,6 +56,17 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <Layout>
                   <ConfigPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/evolution-config"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <EvolutionConfigPage />
                 </Layout>
               </ProtectedRoute>
             }

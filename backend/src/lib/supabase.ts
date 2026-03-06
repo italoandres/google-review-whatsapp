@@ -89,6 +89,7 @@ export interface Database {
           sent_at: string | null;
           reviewed_at: string | null;
           attendance_date: string;
+          import_source: 'manual' | 'auto-imported';
           created_at: string;
         };
         Insert: {
@@ -102,6 +103,7 @@ export interface Database {
           sent_at?: string | null;
           reviewed_at?: string | null;
           attendance_date?: string;
+          import_source?: 'manual' | 'auto-imported';
           created_at?: string;
         };
         Update: {
@@ -115,7 +117,180 @@ export interface Database {
           sent_at?: string | null;
           reviewed_at?: string | null;
           attendance_date?: string;
+          import_source?: 'manual' | 'auto-imported';
           created_at?: string;
+        };
+      };
+      evolution_api_config: {
+        Row: {
+          id: string;
+          user_id: string;
+          api_url: string;
+          encrypted_api_key: string;
+          instance_name: string;
+          webhook_secret: string;
+          is_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          api_url: string;
+          encrypted_api_key: string;
+          instance_name: string;
+          webhook_secret: string;
+          is_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          api_url?: string;
+          encrypted_api_key?: string;
+          instance_name?: string;
+          webhook_secret?: string;
+          is_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      whatsapp_instances: {
+        Row: {
+          id: string;
+          user_id: string;
+          instance_name: string;
+          status: 'disconnected' | 'connecting' | 'connected';
+          encrypted_api_key: string | null;
+          phone_number: string | null;
+          connected_at: string | null;
+          disconnected_at: string | null;
+          last_activity_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          instance_name: string;
+          status?: 'disconnected' | 'connecting' | 'connected';
+          encrypted_api_key?: string | null;
+          phone_number?: string | null;
+          connected_at?: string | null;
+          disconnected_at?: string | null;
+          last_activity_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          instance_name?: string;
+          status?: 'disconnected' | 'connecting' | 'connected';
+          encrypted_api_key?: string | null;
+          phone_number?: string | null;
+          connected_at?: string | null;
+          disconnected_at?: string | null;
+          last_activity_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      whatsapp_connection_history: {
+        Row: {
+          id: string;
+          user_id: string;
+          instance_name: string;
+          event_type: 'connected' | 'disconnected' | 'created' | 'deleted' | 'error';
+          status: string;
+          details: Record<string, any> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          instance_name: string;
+          event_type: 'connected' | 'disconnected' | 'created' | 'deleted' | 'error';
+          status: string;
+          details?: Record<string, any> | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          instance_name?: string;
+          event_type?: 'connected' | 'disconnected' | 'created' | 'deleted' | 'error';
+          status?: string;
+          details?: Record<string, any> | null;
+          created_at?: string;
+        };
+      };
+      whatsapp_webhook_logs: {
+        Row: {
+          id: string;
+          instance_name: string;
+          event_type: string;
+          payload: Record<string, any>;
+          signature: string | null;
+          signature_valid: boolean | null;
+          processed: boolean;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          instance_name: string;
+          event_type: string;
+          payload: Record<string, any>;
+          signature?: string | null;
+          signature_valid?: boolean | null;
+          processed?: boolean;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          instance_name?: string;
+          event_type?: string;
+          payload?: Record<string, any>;
+          signature?: string | null;
+          signature_valid?: boolean | null;
+          processed?: boolean;
+          error_message?: string | null;
+          created_at?: string;
+        };
+      };
+      rate_limit_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          request_count: number;
+          window_start: string;
+          window_end: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          request_count?: number;
+          window_start: string;
+          window_end: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          request_count?: number;
+          window_start?: string;
+          window_end?: string;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };

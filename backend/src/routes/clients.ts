@@ -23,12 +23,24 @@ router.use(authMiddleware);
 /**
  * GET /api/clients
  * Lista todos os clientes do usuário
+ * Query params:
+ *   - importSource: 'manual' | 'auto-imported' (opcional)
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
+    const importSource = req.query.importSource as 'manual' | 'auto-imported' | undefined;
 
-    const clients = await getClientsByUserId(userId);
+    // Validar importSource se fornecido
+    if (importSource && importSource !== 'manual' && importSource !== 'auto-imported') {
+      res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: 'importSource deve ser "manual" ou "auto-imported"'
+      });
+      return;
+    }
+
+    const clients = await getClientsByUserId(userId, importSource);
 
     res.json({ clients });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 
 export type ReviewStatus = 'NOT_SENT' | 'SENT' | 'REVIEWED_MANUAL';
+export type ImportSource = 'manual' | 'auto-imported';
 
 export interface Client {
   id: string;
@@ -13,6 +14,7 @@ export interface Client {
   sentAt: string | null;
   reviewedAt: string | null;
   attendanceDate: string;
+  importSource: ImportSource;
   createdAt: string;
 }
 
@@ -55,19 +57,25 @@ function mapClientFromDB(data: any): Client {
     sentAt: data.sent_at,
     reviewedAt: data.reviewed_at,
     attendanceDate: data.attendance_date,
+    importSource: data.import_source || 'manual',
     createdAt: data.created_at
   };
 }
 
 /**
  * Verifica se telefone já existe para o usuário
+ * Usa normalização de telefone para detectar duplicatas em diferentes formatos
  */
 export async function checkPhoneExists(userId: string, phone: string): Promise<boolean> {
+  // Import normalizePhone dynamically to avoid circular dependencies
+  const { normalizePhone } = await import('../utils/phoneNormalizer');
+  const normalizedPhone = normalizePhone(phone);
+
   const { data, error } = await supabase
     .from('clients')
     .select('id')
     .eq('user_id', userId)
-    .eq('phone', phone)
+    .eq('phone', normalizedPhone)
     .single();
 
   if (error) {
@@ -84,13 +92,21 @@ export async function checkPhoneExists(userId: string, phone: string): Promise<b
 
 /**
  * Busca todos os clientes de um usuário
+ * @param userId - ID do usuário
+ * @param importSource - Filtro opcional por fonte de importação ('manual' | 'auto-imported')
  */
-export async function getClientsByUserId(userId: string): Promise<Client[]> {
-  const { data, error } = await supabase
+export async function getClientsByUserId(userId: string, importSource?: ImportSource): Promise<Client[]> {
+  let query = supabase
     .from('clients')
     .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .eq('user_id', userId);
+
+  // Aplicar filtro de import_source se fornecido
+  if (importSource) {
+    query = query.eq('import_source', importSource);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     console.error('Erro ao buscar clientes:', error);
@@ -127,6 +143,8 @@ export async function getClientById(clientId: string, userId: string): Promise<C
  * Cria novo cliente
  */
 export async function createClient(userId: string, input: ClientInput): Promise<Client> {
+  const { normalizePhone } = await import('../utils/phoneNormalizer');
+  const normalizedPhone = normalizePhone(input.phone);
   const reviewStatus = calculateInitialReviewStatus(input.complained);
 
   const { data, error } = await supabase
@@ -134,10 +152,11 @@ export async function createClient(userId: string, input: ClientInput): Promise<
     .insert({
       user_id: userId,
       name: input.name || null,
-      phone: input.phone,
+      phone: normalizedPhone,
       satisfied: input.satisfied,
       complained: input.complained,
       review_status: reviewStatus,
+      import_source: 'manual',
       attendance_date: new Date().toISOString()
     })
     .select()
@@ -152,6 +171,62 @@ export async function createClient(userId: string, input: ClientInput): Promise<
     }
     
     throw new Error('Erro ao criar cliente');
+  }
+
+  return mapClientFromDB(data);
+}
+
+/**
+ * Interface para criação de cliente auto-importado
+ */
+export interface AutoImportClientInput {
+  userId: string;
+  phone: string;
+  name: string;
+}
+
+/**
+ * Cria novo cliente a partir de auto-importação do WhatsApp
+ * 
+ * Clientes auto-importados:
+ * - Têm import_source definido como 'auto-imported'
+ * - Começam com satisfied=false (satisfação desconhecida)
+ * - Começam com complained=false (sem reclamação)
+ * - Começam com review_status='NOT_SENT' (aptos para receber link)
+ * - Usam telefone normalizado em formato E.164
+ * 
+ * @param input - Dados do cliente (userId, phone, name)
+ * @returns Cliente criado
+ * @throws Error se houver falha na criação
+ */
+export async function createAutoImportedClient(input: AutoImportClientInput): Promise<Client> {
+  const { normalizePhone } = await import('../utils/phoneNormalizer');
+  const normalizedPhone = normalizePhone(input.phone);
+
+  const { data, error } = await supabase
+    .from('clients')
+    .insert({
+      user_id: input.userId,
+      name: input.name,
+      phone: normalizedPhone,
+      satisfied: false,           // Satisfação desconhecida
+      complained: false,          // Sem reclamação
+      review_status: 'NOT_SENT',  // Apto para receber link de avaliação
+      import_source: 'auto-imported',
+      attendance_date: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao criar cliente auto-importado:', error);
+    
+    // Tratar erro de telefone duplicado
+    if (error.code === '23505') {
+      throw new Error('Este telefone já está cadastrado');
+    }
+    
+    throw new Error('Erro ao criar cliente auto-importado');
   }
 
   return mapClientFromDB(data);

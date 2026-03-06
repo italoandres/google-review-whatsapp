@@ -2,14 +2,20 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Validar configuração na inicialização
+import { validateConfigOnStartup } from './config/environment';
+const config = validateConfigOnStartup();
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
 import businessRoutes from './routes/business';
 import clientsRoutes from './routes/clients';
+import evolutionRoutes from './routes/evolution';
+import whatsappInstanceRoutes from './routes/whatsappInstance';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.app.port;
 
 // Middlewares globais
 app.use(cors());
@@ -28,6 +34,8 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/clients', clientsRoutes);
+app.use('/api', evolutionRoutes);
+app.use('/api/evolution', whatsappInstanceRoutes);
 
 // Rota de health check
 app.get('/health', (req: Request, res: Response) => {

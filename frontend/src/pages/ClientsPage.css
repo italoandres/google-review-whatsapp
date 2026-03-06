@@ -118,3 +118,43 @@
     font-size: 13px;
   }
 }
+
+/* Import source badges */
+.import-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.import-manual {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.import-auto {
+  background-color: #f3e5f5;
+  color: #6a1b9a;
+}
+
+/* Filter select */
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filter-select:hover {
+  border-color: #80bdff;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}

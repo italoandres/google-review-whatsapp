@@ -9,15 +9,16 @@ const ClientsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [importSourceFilter, setImportSourceFilter] = useState<'all' | 'manual' | 'auto-imported'>('all');
 
   useEffect(() => {
     loadClients();
-  }, []);
+  }, [importSourceFilter]);
 
   const loadClients = async () => {
     try {
       setError(null);
-      const data = await clientsApi.getAll();
+      const data = await clientsApi.getAll(importSourceFilter === 'all' ? undefined : importSourceFilter);
       setClients(data);
     } catch (err) {
       setError('Erro ao carregar clientes');
@@ -91,6 +92,13 @@ const ClientsPage: React.FC = () => {
     return <span className={`status-badge ${badge.className}`}>{badge.text}</span>;
   };
 
+  const getImportSourceBadge = (importSource: string) => {
+    if (importSource === 'auto-imported') {
+      return <span className="import-badge import-auto" title="Auto-importado do WhatsApp">📱 Auto</span>;
+    }
+    return <span className="import-badge import-manual" title="Cadastrado manualmente">✍️ Manual</span>;
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -103,12 +111,23 @@ const ClientsPage: React.FC = () => {
     <div className="container">
       <div className="clients-header">
         <h1>Clientes</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowAddForm(!showAddForm)}
-        >
-          {showAddForm ? 'Cancelar' : '+ Novo Cliente'}
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <select
+            value={importSourceFilter}
+            onChange={(e) => setImportSourceFilter(e.target.value as 'all' | 'manual' | 'auto-imported')}
+            className="filter-select"
+          >
+            <option value="all">Todos</option>
+            <option value="manual">Manual</option>
+            <option value="auto-imported">Auto-Importado</option>
+          </select>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            {showAddForm ? 'Cancelar' : '+ Novo Cliente'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -138,6 +157,7 @@ const ClientsPage: React.FC = () => {
                 <th>Nome</th>
                 <th>Telefone</th>
                 <th>Data Atendimento</th>
+                <th>Origem</th>
                 <th>Status</th>
                 <th>Data Envio</th>
                 <th>Data Avaliação</th>
@@ -150,6 +170,7 @@ const ClientsPage: React.FC = () => {
                   <td>{client.name || '-'}</td>
                   <td>{formatPhone(client.phone)}</td>
                   <td>{formatDate(client.attendanceDate)}</td>
+                  <td>{getImportSourceBadge(client.importSource || 'manual')}</td>
                   <td>{getStatusBadge(client.reviewStatus)}</td>
                   <td>
                     {client.sentAt ? formatDate(client.sentAt) : '-'}
