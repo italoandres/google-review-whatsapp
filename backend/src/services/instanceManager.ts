@@ -241,50 +241,77 @@ export class InstanceManagerService {
   /**
    * Gets connection status of the user's instance
    * Maps Evolution API states to valid status values
+   * Implements retry logic for robustness
    * 
    * @param userId - ID of the authenticated user
+   * @param retries - Number of retry attempts (default: 3)
    * @returns Connection status
    * 
    * Validates: Requirements 4.2, 4.3, 4.4
    */
-  async getConnectionStatus(userId: string): Promise<ConnectionStatus> {
+  async getConnectionStatus(userId: string, retries: number = 3): Promise<ConnectionStatus> {
     // Get instance from database
     const instance = await getWhatsAppInstanceByUserId(userId);
     if (!instance) {
       return 'disconnected';
     }
 
-    // Get connection state from Evolution API
-    try {
-      const connectionState = await this.evolutionClient.getConnectionState(
-        instance.instanceName
-      );
+    // Get connection state from Evolution API with retry logic
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const connectionState = await this.evolutionClient.getConnectionState(
+          instance.instanceName
+        );
 
-      const status = this.mapConnectionStateToStatus(connectionState.state);
+        const status = this.mapConnectionStateToStatus(connectionState.state);
 
-      // Update status in database if changed
-      if (status !== instance.status) {
-        await updateWhatsAppInstance(userId, {
-          status,
-          lastActivityAt: new Date().toISOString(),
-          ...(status === 'connected' && { connectedAt: new Date().toISOString() }),
-          ...(status === 'disconnected' && { disconnectedAt: new Date().toISOString() }),
-        });
+        // Update status in database if changed
+        if (status !== instance.status) {
+          await updateWhatsAppInstance(userId, {
+            status,
+            lastActivityAt: new Date().toISOString(),
+            ...(status === 'connected' && { connectedAt: new Date().toISOString() }),
+            ...(status === 'disconnected' && { disconnectedAt: new Date().toISOString() }),
+          });
+        }
+
+        return status;
+      } catch (error) {
+        const isLastAttempt = attempt === retries - 1;
+        
+        // If Evolution API is offline or instance not found
+        if (error instanceof EvolutionAPIError) {
+          if (isLastAttempt) {
+            console.warn('Failed to get connection status from Evolution API after retries', {
+              userId,
+              instanceName: instance.instanceName,
+              error: error.message,
+              attempts: retries,
+            });
+            return 'disconnected';
+          }
+          
+          // Wait before retry (exponential backoff: 500ms, 1000ms, 1500ms)
+          await this.sleep(500 * (attempt + 1));
+          continue;
+        }
+        
+        // Unexpected error - throw immediately
+        throw error;
       }
-
-      return status;
-    } catch (error) {
-      // If Evolution API is offline or instance not found, return disconnected
-      if (error instanceof EvolutionAPIError) {
-        console.warn('Failed to get connection status from Evolution API', {
-          userId,
-          instanceName: instance.instanceName,
-          error: error.message,
-        });
-        return 'disconnected';
-      }
-      throw error;
     }
+
+    // Fallback (should never reach here)
+    return 'disconnected';
+  }
+
+  /**
+   * Sleep utility for retry delays
+   * 
+   * @param ms - Milliseconds to sleep
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**

@@ -28,18 +28,27 @@ const WhatsAppConnectionPage: React.FC = () => {
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [pollingAttempts, setPollingAttempts] = useState(0);
 
-  const MAX_POLLING_ATTEMPTS = 60; // 3 minutes (60 * 3 seconds)
+  const MAX_POLLING_ATTEMPTS = 120; // 6 minutes (120 * 3 seconds)
   const POLLING_INTERVAL_MS = 3000; // 3 seconds
 
-  // Check connection status on mount
+  // Check connection status on mount and periodically when idle/error
   useEffect(() => {
     checkConnectionStatus();
+    
+    // CRITICAL FIX: Periodic status check when idle or error
+    const statusCheckInterval = setInterval(() => {
+      if (pageStatus === 'idle' || pageStatus === 'error') {
+        checkConnectionStatus();
+      }
+    }, 10000); // Check every 10 seconds
+    
     return () => {
+      clearInterval(statusCheckInterval);
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
     };
-  }, []);
+  }, [pageStatus]);
 
   const checkConnectionStatus = async () => {
     try {
@@ -78,10 +87,31 @@ const WhatsAppConnectionPage: React.FC = () => {
 
         if (newAttempts >= MAX_POLLING_ATTEMPTS) {
           clearInterval(interval);
-          setErrorMessage(
-            'Tempo limite excedido. Por favor, gere um novo QR Code.'
-          );
-          setPageStatus('error');
+          
+          // CRITICAL FIX: Final verification before showing error
+          (async () => {
+            try {
+              const finalCheck = await whatsappApi.getConnectionStatus();
+              if (finalCheck.status === 'connected') {
+                // Success! Connection happened during polling
+                setPageStatus('connected');
+                setConnectionInfo({
+                  instanceName: finalCheck.instanceName,
+                  connectedAt: finalCheck.connectedAt,
+                });
+                return;
+              }
+            } catch (error) {
+              console.error('Final check failed:', error);
+            }
+            
+            // Only show error if truly not connected
+            setErrorMessage(
+              'Tempo limite excedido. Por favor, tente novamente.'
+            );
+            setPageStatus('error');
+          })();
+          
           return newAttempts;
         }
 
@@ -263,8 +293,17 @@ const WhatsAppConnectionPage: React.FC = () => {
             onRefresh={handleRefreshQRCode}
           />
           <div className="polling-info">
-            <p>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${(pollingAttempts / MAX_POLLING_ATTEMPTS) * 100}%` }}
+              />
+            </div>
+            <p className="attempts-text">
               Aguardando conexão... (Tentativa {pollingAttempts} de {MAX_POLLING_ATTEMPTS})
+            </p>
+            <p className="time-remaining">
+              Tempo restante: {Math.floor((MAX_POLLING_ATTEMPTS - pollingAttempts) * POLLING_INTERVAL_MS / 60000)} minutos
             </p>
           </div>
         </div>
@@ -301,6 +340,12 @@ const WhatsAppConnectionPage: React.FC = () => {
             <h2>Erro na conexão</h2>
             <p>{errorMessage}</p>
             <div className="error-actions">
+              <button 
+                onClick={checkConnectionStatus}
+                className="btn btn-secondary"
+              >
+                Verificar Status
+              </button>
               <button 
                 onClick={handleConnect}
                 className="btn btn-primary"
