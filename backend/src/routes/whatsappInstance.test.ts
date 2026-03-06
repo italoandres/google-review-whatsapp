@@ -17,6 +17,7 @@ const mockGetQRCode = jest.fn();
 const mockGetConnectionStatus = jest.fn();
 const mockDisconnectInstance = jest.fn();
 const mockReconnectInstance = jest.fn();
+const mockGetWhatsAppInstanceByUserId = jest.fn();
 
 jest.mock('../services/instanceManager', () => ({
   InstanceManagerService: jest.fn().mockImplementation(() => ({
@@ -65,6 +66,10 @@ jest.mock('../lib/supabase', () => ({
       getUser: jest.fn(),
     },
   },
+}));
+
+jest.mock('../models/whatsappInstance', () => ({
+  getWhatsAppInstanceByUserId: (...args: any[]) => mockGetWhatsAppInstanceByUserId(...args),
 }));
 
 // Import after mocks
@@ -249,6 +254,13 @@ describe('WhatsApp Instance Management Routes', () => {
   describe('GET /api/evolution/connection-status', () => {
     it('should return connection status successfully', async () => {
       mockGetConnectionStatus.mockResolvedValue('connected');
+      mockGetWhatsAppInstanceByUserId.mockResolvedValue({
+        userId: mockUserId,
+        instanceName: mockInstanceName,
+        status: 'connected',
+        connectedAt: '2026-03-06T10:00:00.000Z',
+        createdAt: '2026-03-06T09:00:00.000Z',
+      });
 
       const response = await request(app)
         .get('/api/evolution/connection-status')
@@ -257,24 +269,38 @@ describe('WhatsApp Instance Management Routes', () => {
 
       expect(response.body).toEqual({
         status: 'connected',
+        instanceName: mockInstanceName,
+        connectedAt: '2026-03-06T10:00:00.000Z',
       });
 
       expect(mockGetConnectionStatus).toHaveBeenCalledWith(mockUserId);
+      expect(mockGetWhatsAppInstanceByUserId).toHaveBeenCalledWith(mockUserId);
     });
 
     it('should return disconnected status', async () => {
       mockGetConnectionStatus.mockResolvedValue('disconnected');
+      mockGetWhatsAppInstanceByUserId.mockResolvedValue(null);
 
       const response = await request(app)
         .get('/api/evolution/connection-status')
         .set('x-test-user-id', mockUserId)
         .expect(200);
 
-      expect(response.body.status).toBe('disconnected');
+      expect(response.body).toEqual({
+        status: 'disconnected',
+        instanceName: null,
+        connectedAt: null,
+      });
     });
 
     it('should return connecting status', async () => {
       mockGetConnectionStatus.mockResolvedValue('connecting');
+      mockGetWhatsAppInstanceByUserId.mockResolvedValue({
+        userId: mockUserId,
+        instanceName: mockInstanceName,
+        status: 'connecting',
+        createdAt: '2026-03-06T09:00:00.000Z',
+      });
 
       const response = await request(app)
         .get('/api/evolution/connection-status')
@@ -282,6 +308,7 @@ describe('WhatsApp Instance Management Routes', () => {
         .expect(200);
 
       expect(response.body.status).toBe('connecting');
+      expect(response.body.instanceName).toBe(mockInstanceName);
     });
 
     it('should return 401 when user not authenticated', async () => {

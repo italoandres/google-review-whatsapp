@@ -17,6 +17,7 @@ import {
   QRCodeNotAvailableError,
   RateLimitError,
 } from '../services/instanceManager';
+import { getWhatsAppInstanceByUserId } from '../models/whatsappInstance';
 
 const router = Router();
 const instanceManager = new InstanceManagerService();
@@ -223,8 +224,13 @@ router.get('/connection-status', authMiddleware, async (req: Request, res: Respo
     // Get connection status
     const status = await instanceManager.getConnectionStatus(userId);
 
+    // Get instance details from database
+    const instance = await getWhatsAppInstanceByUserId(userId);
+
     res.json({
       status,
+      instanceName: instance?.instanceName || null,
+      connectedAt: instance?.connectedAt || null,
     });
   } catch (error) {
     // Unexpected error

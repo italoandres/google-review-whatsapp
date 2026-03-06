@@ -58,8 +58,8 @@ const WhatsAppConnectionPage: React.FC = () => {
       if (response.status === 'connected') {
         setPageStatus('connected');
         setConnectionInfo({
-          instanceName: response.instanceName,
-          connectedAt: response.connectedAt,
+          instanceName: response.instanceName || 'Instância WhatsApp',
+          connectedAt: response.connectedAt || new Date().toISOString(),
         });
       } else if (response.status === 'connecting') {
         setPageStatus('waiting_scan');
@@ -96,8 +96,8 @@ const WhatsAppConnectionPage: React.FC = () => {
                 // Success! Connection happened during polling
                 setPageStatus('connected');
                 setConnectionInfo({
-                  instanceName: finalCheck.instanceName,
-                  connectedAt: finalCheck.connectedAt,
+                  instanceName: finalCheck.instanceName || 'Instância WhatsApp',
+                  connectedAt: finalCheck.connectedAt || new Date().toISOString(),
                 });
                 return;
               }
@@ -126,8 +126,8 @@ const WhatsAppConnectionPage: React.FC = () => {
           clearInterval(interval);
           setPageStatus('connected');
           setConnectionInfo({
-            instanceName: response.instanceName,
-            connectedAt: response.connectedAt,
+            instanceName: response.instanceName || 'Instância WhatsApp',
+            connectedAt: response.connectedAt || new Date().toISOString(),
           });
         }
       } catch (error) {
