@@ -6,7 +6,6 @@ import SetupPage from './pages/SetupPage';
 import DashboardPage from './pages/DashboardPage';
 import ClientsPage from './pages/ClientsPage';
 import ConfigPage from './pages/ConfigPage';
-import EvolutionConfigPage from './pages/EvolutionConfigPage';
 import WhatsAppConnectionPage from './pages/WhatsAppConnectionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -63,17 +62,6 @@ const App: React.FC = () => {
           />
 
           <Route
-            path="/evolution-config"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <EvolutionConfigPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
             path="/whatsapp-connection"
             element={
               <ProtectedRoute>
@@ -83,6 +71,9 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Redirect old evolution-config to new whatsapp-connection */}
+          <Route path="/evolution-config" element={<Navigate to="/whatsapp-connection" replace />} />
 
           {/* Rota padrão - redirecionar para dashboard */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
