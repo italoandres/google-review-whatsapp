@@ -390,19 +390,19 @@ A implementação seguirá uma abordagem incremental, construindo primeiro a inf
     - Testar formatação de timestamps
     - _Requirements: 25.5_
 
-- [ ] 19. Implementar tratamento de erros no frontend
-  - [ ] 19.1 Criar mapeamento de códigos de erro para mensagens amigáveis
+- [x] 19. Implementar tratamento de erros no frontend
+  - [x] 19.1 Criar mapeamento de códigos de erro para mensagens amigáveis
     - Mapear UNAUTHORIZED, RATE_LIMIT_EXCEEDED, EVOLUTION_API_ERROR, etc
     - Criar mensagens em português
     - _Requirements: 12.2, 12.4_
   
-  - [ ] 19.2 Implementar ações de recuperação de erro
+  - [x] 19.2 Implementar ações de recuperação de erro
     - Adicionar botões de ação baseados no tipo de erro
     - Implementar retry automático para erros temporários
     - Implementar redirecionamento para login em erros de autenticação
     - _Requirements: 12.4, 14.3, 14.4, 14.5_
   
-  - [ ] 19.3 Adicionar notificações de desconexão
+  - [x] 19.3 Adicionar notificações de desconexão
     - Detectar mudança para status "disconnected"
     - Exibir notificação ao usuário
     - Adicionar botão "Reconectar" na notificação
@@ -480,14 +480,14 @@ A implementação seguirá uma abordagem incremental, construindo primeiro a inf
     - Documentar rate limits
     - _Requirements: 2.1, 2.4, 2.5_
 
-- [ ] 25. Implementar health checks e monitoramento
-  - [ ] 25.1 Criar endpoints de health check
+- [x] 25. Implementar health checks e monitoramento
+  - [x] 25.1 Criar endpoints de health check
     - Implementar GET /health
     - Implementar GET /health/database
     - Implementar GET /health/evolution
     - _Requirements: 12.1, 12.2_
   
-  - [ ] 25.2 Adicionar métricas de monitoramento
+  - [x] 25.2 Adicionar métricas de monitoramento
     - Contar requisições por endpoint
     - Medir tempo de resposta
     - Contar erros por tipo

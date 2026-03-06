@@ -14,6 +14,7 @@ import clientsRoutes from './routes/clients';
 import evolutionRoutes from './routes/evolution';
 import whatsappInstanceRoutes from './routes/whatsappInstance';
 import webhookRoutes from './routes/webhook';
+import healthRoutes from './routes/health';
 
 const app = express();
 const PORT = config.app.port;
@@ -38,11 +39,7 @@ app.use('/api/clients', clientsRoutes);
 app.use('/api', evolutionRoutes);
 app.use('/api/evolution', whatsappInstanceRoutes);
 app.use('/api/webhooks', webhookRoutes);
-
-// Rota de health check
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+app.use('/health', healthRoutes);
 
 // Tratamento de rota não encontrada
 app.use((req: Request, res: Response) => {
