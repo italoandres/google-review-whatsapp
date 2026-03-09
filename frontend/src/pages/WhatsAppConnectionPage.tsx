@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { whatsappApi } from '../services/api';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 import ConnectionStatusIndicator from '../components/ConnectionStatusIndicator';
 import { AxiosError } from 'axios';
 import './WhatsAppConnectionPage.css';
 
-type PageStatus = 'idle' | 'creating' | 'waiting_scan' | 'connected' | 'error';
+type PageStatus = 'loading' | 'idle' | 'creating' | 'waiting_scan' | 'connected' | 'error';
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
 interface ConnectionInfo {
@@ -20,31 +20,40 @@ interface ErrorResponse {
 }
 
 const WhatsAppConnectionPage: React.FC = () => {
-  const [pageStatus, setPageStatus] = useState<PageStatus>('idle');
+  const [pageStatus, setPageStatus] = useState<PageStatus>('loading');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
-  const [pollingAttempts, setPollingAttempts] = useState(0);
   const [qrCodeRetryAttempt, setQrCodeRetryAttempt] = useState(0);
 
-  const MAX_POLLING_ATTEMPTS = 120; // 6 minutes (120 * 3 seconds)
-  const POLLING_INTERVAL_MS = 3000; // 3 seconds
-  const MAX_QR_CODE_RETRIES = 10; // Increased from 5 to 10
-  const QR_CODE_RETRY_DELAY_MS = 2000; // 2 seconds
+  const MAX_QR_CODE_RETRIES = 10;
+  const QR_CODE_RETRY_DELAY_MS = 2000;
+  const STATUS_CHECK_INTERVAL_MS = 3000; // Check every 3 seconds during polling
+  const IDLE_STATUS_CHECK_INTERVAL_MS = 10000; // Check every 10 seconds when idle/error
 
-  // Check connection status on mount only
+  // Auto-check status on mount and periodically
   useEffect(() => {
+    // Initial check
     checkConnectionStatus();
-    
-    // Cleanup: stop polling when component unmounts
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+
+    // Set up interval to check status periodically
+    // More frequent when waiting_scan, less frequent when idle/error
+    const interval = setInterval(() => {
+      if (pageStatus === 'idle' || pageStatus === 'error') {
+        // Check every 10 seconds when idle or error
+        checkConnectionStatus();
+      } else if (pageStatus === 'waiting_scan') {
+        // Check every 3 seconds when waiting for scan
+        checkConnectionStatus();
       }
+    }, STATUS_CHECK_INTERVAL_MS);
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(interval);
     };
-  }, []); // Run only once on mount
+  }, [pageStatus]);
 
   const checkConnectionStatus = async () => {
     try {
@@ -52,94 +61,24 @@ const WhatsAppConnectionPage: React.FC = () => {
       setConnectionStatus(response.status);
       
       if (response.status === 'connected') {
+        // Connected! Show success
         setPageStatus('connected');
         setConnectionInfo({
           instanceName: response.instanceName || 'Instância WhatsApp',
           connectedAt: response.connectedAt || new Date().toISOString(),
         });
-      } else if (response.status === 'connecting') {
-        // Don't call fetchQRCode here - it causes conflicts
-        // Just set the status, the user needs to manually connect
-        setPageStatus('idle');
-      } else {
+        setErrorMessage(null); // Clear any error message
+      } else if (pageStatus === 'loading') {
+        // First load and not connected
         setPageStatus('idle');
       }
+      // If waiting_scan or creating, don't change status
     } catch (error) {
       console.error('Error checking connection status:', error);
-      setPageStatus('idle');
-    }
-  };
-
-  const startPolling = useCallback(() => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-
-    setPollingAttempts(0);
-
-    const interval = setInterval(async () => {
-      setPollingAttempts((prev) => {
-        const newAttempts = prev + 1;
-
-        if (newAttempts >= MAX_POLLING_ATTEMPTS) {
-          clearInterval(interval);
-          
-          // CRITICAL FIX: Final verification before showing error
-          (async () => {
-            try {
-              const finalCheck = await whatsappApi.getConnectionStatus();
-              if (finalCheck.status === 'connected') {
-                // Success! Connection happened during polling
-                setPageStatus('connected');
-                setConnectionInfo({
-                  instanceName: finalCheck.instanceName || 'Instância WhatsApp',
-                  connectedAt: finalCheck.connectedAt || new Date().toISOString(),
-                });
-                return;
-              }
-            } catch (error) {
-              console.error('Final check failed:', error);
-            }
-            
-            // Only show error if truly not connected
-            setErrorMessage(
-              'Tempo limite excedido. Por favor, tente novamente.'
-            );
-            setPageStatus('error');
-          })();
-          
-          return newAttempts;
-        }
-
-        return newAttempts;
-      });
-
-      try {
-        const response = await whatsappApi.getConnectionStatus();
-        setConnectionStatus(response.status);
-
-        if (response.status === 'connected') {
-          clearInterval(interval);
-          setPageStatus('connected');
-          setConnectionInfo({
-            instanceName: response.instanceName || 'Instância WhatsApp',
-            connectedAt: response.connectedAt || new Date().toISOString(),
-          });
-        }
-      } catch (error) {
-        console.error('Error polling connection status:', error);
+      if (pageStatus === 'loading') {
+        setPageStatus('idle');
       }
-    }, POLLING_INTERVAL_MS);
-
-    setPollingInterval(interval);
-  }, [pollingInterval]);
-
-  const stopPolling = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
     }
-    setPollingAttempts(0);
   };
 
   const handleConnect = async () => {
@@ -180,21 +119,19 @@ const WhatsAppConnectionPage: React.FC = () => {
         setQrCode(response.qrCode);
         setPageStatus('waiting_scan');
         setConnectionStatus('connecting');
-        setQrCodeRetryAttempt(0); // Reset counter on success
-        startPolling();
-        return; // Success!
+        setQrCodeRetryAttempt(0);
+        // Don't start polling - the useEffect interval will handle it
+        return;
       } catch (error) {
         const axiosError = error as AxiosError<ErrorResponse>;
         
-        // If 404 and not last attempt, wait and retry
         if (axiosError.response?.status === 404 && attempt < retries - 1) {
           console.log(`QR code not ready yet, retrying in ${QR_CODE_RETRY_DELAY_MS/1000}s... (attempt ${attempt + 1}/${retries})`);
           await new Promise(resolve => setTimeout(resolve, QR_CODE_RETRY_DELAY_MS));
           continue;
         }
         
-        // Last attempt or other error
-        setQrCodeRetryAttempt(0); // Reset counter
+        setQrCodeRetryAttempt(0);
         
         if (axiosError.response?.status === 404) {
           setErrorMessage('QR Code não disponível após várias tentativas. Tente novamente.');
@@ -213,7 +150,6 @@ const WhatsAppConnectionPage: React.FC = () => {
   const handleRefreshQRCode = async () => {
     setErrorMessage(null);
     setQrCodeRetryAttempt(0);
-    stopPolling();
     await fetchQRCode();
   };
 
@@ -224,7 +160,6 @@ const WhatsAppConnectionPage: React.FC = () => {
 
     try {
       await whatsappApi.disconnect();
-      stopPolling();
       setPageStatus('idle');
       setConnectionStatus('disconnected');
       setConnectionInfo(null);
@@ -233,27 +168,6 @@ const WhatsAppConnectionPage: React.FC = () => {
       const axiosError = error as AxiosError<ErrorResponse>;
       const errorData = axiosError.response?.data;
       setErrorMessage(errorData?.message || 'Erro ao desconectar WhatsApp');
-    }
-  };
-
-  const handleReconnect = async () => {
-    setErrorMessage(null);
-    setPageStatus('creating');
-
-    try {
-      const response = await whatsappApi.reconnect();
-      setQrCode(response.qrCode);
-      setConnectionInfo({
-        instanceName: response.instanceName,
-      });
-      setPageStatus('waiting_scan');
-      setConnectionStatus('connecting');
-      startPolling();
-    } catch (error) {
-      const axiosError = error as AxiosError<ErrorResponse>;
-      const errorData = axiosError.response?.data;
-      setErrorMessage(errorData?.message || 'Erro ao reconectar WhatsApp');
-      setPageStatus('error');
     }
   };
 
@@ -270,6 +184,16 @@ const WhatsAppConnectionPage: React.FC = () => {
         <div className="error-message">
           <span className="error-icon">⚠️</span>
           {errorMessage}
+        </div>
+      )}
+
+      {pageStatus === 'loading' && (
+        <div className="connection-card">
+          <div className="loading-state">
+            <div className="spinner-large"></div>
+            <h2>Verificando status...</h2>
+            <p>Aguarde um momento</p>
+          </div>
         </div>
       )}
 
@@ -322,17 +246,11 @@ const WhatsAppConnectionPage: React.FC = () => {
             onRefresh={handleRefreshQRCode}
           />
           <div className="polling-info">
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{ width: `${(pollingAttempts / MAX_POLLING_ATTEMPTS) * 100}%` }}
-              />
-            </div>
             <p className="attempts-text">
-              Aguardando conexão... (Tentativa {pollingAttempts} de {MAX_POLLING_ATTEMPTS})
+              Aguardando leitura do QR code...
             </p>
             <p className="time-remaining">
-              Tempo restante: {Math.floor((MAX_POLLING_ATTEMPTS - pollingAttempts) * POLLING_INTERVAL_MS / 60000)} minutos
+              O sistema detectará automaticamente quando você conectar
             </p>
           </div>
         </div>
