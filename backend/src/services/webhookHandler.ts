@@ -230,12 +230,25 @@ export class WebhookHandler {
     const instanceName = payload.instance;
     const messageData = payload.data;
     
+    console.log('📨 [handleMessageUpsert] Processing message', {
+      instanceName,
+      event: payload.event,
+      hasData: !!messageData,
+      dataKeys: Object.keys(messageData || {}),
+    });
+    
     // Get instance from database
     const instance = await getWhatsAppInstanceByName(instanceName);
     
     if (!instance) {
+      console.error('❌ [handleMessageUpsert] Instance not found', { instanceName });
       throw new Error(`Instance ${instanceName} not found in database`);
     }
+    
+    console.log('✅ [handleMessageUpsert] Instance found', {
+      instanceName,
+      userId: instance.userId,
+    });
     
     // Update last activity
     await updateWhatsAppInstance(instance.userId, {
@@ -246,24 +259,51 @@ export class WebhookHandler {
     const clientId = messageData.key?.remoteJid;
     
     // Log message processing (webhook_logs table already has the full payload)
-    console.info('Message received', {
+    console.log('📝 [handleMessageUpsert] Message details', {
       instanceName,
       clientId,
       fromMe: messageData.key?.fromMe,
       pushName: messageData.pushName,
+      hasKey: !!messageData.key,
+      hasMessage: !!messageData.message,
     });
     
     // Auto-import contact if it's an incoming message
     try {
+      console.log('🔍 [handleMessageUpsert] Attempting to extract contact', {
+        instanceName,
+        payloadKeys: Object.keys(payload),
+        dataKeys: Object.keys(messageData),
+      });
+      
       const contact = extractContact(payload as any);
+      
+      console.log('📞 [handleMessageUpsert] Contact extraction result', {
+        instanceName,
+        hasContact: !!contact,
+        contact: contact ? { phone: contact.phone, name: contact.name } : null,
+      });
       
       if (contact) {
         // Normalize phone number
         const normalizedPhone = normalizePhone(contact.phone);
         
+        console.log('🔢 [handleMessageUpsert] Phone normalization', {
+          instanceName,
+          originalPhone: contact.phone,
+          normalizedPhone,
+          success: !!normalizedPhone,
+        });
+        
         if (normalizedPhone) {
           // Check if phone already exists
           const phoneExists = await checkPhoneExists(instance.userId, normalizedPhone);
+          
+          console.log('🔎 [handleMessageUpsert] Phone existence check', {
+            instanceName,
+            phone: normalizedPhone,
+            exists: phoneExists,
+          });
           
           if (!phoneExists) {
             // Create new auto-imported client
@@ -273,7 +313,7 @@ export class WebhookHandler {
               name: contact.name,
             });
             
-            console.info('Contact auto-imported', {
+            console.log('✅ [handleMessageUpsert] Contact auto-imported', {
               instanceName,
               clientId: client.id,
               phone: normalizedPhone,
@@ -286,23 +326,29 @@ export class WebhookHandler {
               clientId: client.id,
             };
           } else {
-            console.info('Contact already exists, skipping import', {
+            console.log('ℹ️ [handleMessageUpsert] Contact already exists, skipping', {
               instanceName,
               phone: normalizedPhone,
             });
           }
         } else {
-          console.warn('Failed to normalize phone number', {
+          console.warn('⚠️ [handleMessageUpsert] Failed to normalize phone', {
             instanceName,
-            phone: contact.phone,
+            originalPhone: contact.phone,
           });
         }
+      } else {
+        console.warn('⚠️ [handleMessageUpsert] No contact extracted from payload', {
+          instanceName,
+          payloadStructure: JSON.stringify(payload, null, 2).substring(0, 500),
+        });
       }
     } catch (importError) {
       // Log error but don't fail the webhook
-      console.error('Error auto-importing contact', {
+      console.error('❌ [handleMessageUpsert] Error auto-importing contact', {
         instanceName,
         error: importError instanceof Error ? importError.message : 'Unknown error',
+        stack: importError instanceof Error ? importError.stack : undefined,
       });
     }
     

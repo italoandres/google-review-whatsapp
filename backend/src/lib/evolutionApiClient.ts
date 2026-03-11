@@ -21,15 +21,20 @@ export interface EvolutionInstance {
 }
 
 export interface ConnectionState {
-  instance: string;
-  state: 'close' | 'connecting' | 'open';
+  instance: {
+    instanceName: string;
+    state: 'close' | 'connecting' | 'open';
+  };
 }
 
 export interface WebhookConfig {
-  url: string;
-  webhook_by_events: boolean;
-  webhook_base64: boolean;
-  events: string[];
+  webhook: {
+    enabled: boolean;
+    url: string;
+    webhook_by_events: boolean;
+    webhook_base64: boolean;
+    events: string[];
+  };
 }
 
 export class EvolutionAPIError extends Error {
@@ -141,6 +146,11 @@ export class EvolutionAPIClient {
       );
 
       if (!response.ok) {
+        console.error('❌ [getConnectionState] Failed', {
+          instanceName,
+          status: response.status,
+          statusText: response.statusText,
+        });
         throw new EvolutionAPIError(
           `Failed to get connection state: ${response.statusText}`,
           response.status
@@ -148,6 +158,13 @@ export class EvolutionAPIClient {
       }
 
       const data = await response.json() as ConnectionState;
+      
+      console.log('📡 [getConnectionState] Response', {
+        instanceName,
+        state: data.instance.state,
+        fullResponse: data,
+      });
+
       return data;
     });
   }
@@ -185,21 +202,57 @@ export class EvolutionAPIClient {
     webhookConfig: WebhookConfig
   ): Promise<void> {
     return this.executeWithRetry(async () => {
-      const response = await this.fetchWithTimeout(
-        `${this.baseUrl}/webhook/set/${instanceName}`,
-        {
-          method: 'POST',
-          headers: this.getHeaders(),
-          body: JSON.stringify(webhookConfig),
-        }
-      );
+      const url = `${this.baseUrl}/webhook/set/${instanceName}`;
+      const body = JSON.stringify(webhookConfig);
+      
+      console.log('🔧 [setWebhook] Attempting to configure webhook', {
+        instanceName,
+        url,
+        webhookConfig,
+        bodyLength: body.length,
+      });
+
+      const response = await this.fetchWithTimeout(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body,
+      });
+
+      console.log('📡 [setWebhook] Response received', {
+        instanceName,
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
 
       if (!response.ok) {
+        // Try to get error details from response body
+        let errorBody = '';
+        try {
+          errorBody = await response.text();
+          console.error('❌ [setWebhook] Failed - Response body:', {
+            instanceName,
+            status: response.status,
+            statusText: response.statusText,
+            body: errorBody,
+          });
+        } catch (e) {
+          console.error('❌ [setWebhook] Failed - Could not read response body', {
+            instanceName,
+            status: response.status,
+            statusText: response.statusText,
+          });
+        }
+
         throw new EvolutionAPIError(
-          `Failed to set webhook: ${response.statusText}`,
+          `Failed to set webhook: ${response.statusText}${errorBody ? ` - ${errorBody}` : ''}`,
           response.status
         );
       }
+
+      console.log('✅ [setWebhook] Webhook configured successfully', {
+        instanceName,
+      });
     });
   }
 

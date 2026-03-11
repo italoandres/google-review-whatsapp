@@ -140,14 +140,17 @@ export class InstanceManagerService {
       // Configure webhook (non-blocking - failure doesn't fail instance creation)
       try {
         await this.evolutionClient.setWebhook(instanceName, {
-          url: webhookUrl,
-          webhook_by_events: true,
-          webhook_base64: false,
-          events: [
-            'QRCODE_UPDATED',
-            'CONNECTION_UPDATE',
-            'MESSAGES_UPSERT',
-          ],
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            webhook_by_events: true,
+            webhook_base64: false,
+            events: [
+              'QRCODE_UPDATED',
+              'CONNECTION_UPDATE',
+              'MESSAGES_UPSERT',
+            ],
+          },
         });
       } catch (webhookError) {
         console.warn('Webhook configuration failed, but instance was created', {
@@ -270,7 +273,16 @@ export class InstanceManagerService {
   async getConnectionStatus(userId: string, retries: number = 3): Promise<ConnectionStatus> {
     // Get instance from database
     const instance = await getWhatsAppInstanceByUserId(userId);
+    
+    console.log('🔍 [getConnectionStatus] Checking status', {
+      userId,
+      instanceName: instance?.instanceName,
+      currentStatusInDB: instance?.status,
+      hasInstance: !!instance,
+    });
+
     if (!instance) {
+      console.log('❌ [getConnectionStatus] No instance found');
       return 'disconnected';
     }
 
@@ -281,7 +293,16 @@ export class InstanceManagerService {
           instance.instanceName
         );
 
-        const status = this.mapConnectionStateToStatus(connectionState.state);
+        const status = this.mapConnectionStateToStatus(connectionState.instance.state);
+
+        console.log('🔄 [getConnectionStatus] Mapped status', {
+          instanceName: instance.instanceName,
+          evolutionState: connectionState.instance.state,
+          mappedStatus: status,
+          currentDBStatus: instance.status,
+          willUpdate: status !== instance.status,
+          attempt: attempt + 1,
+        });
 
         // Update status in database if changed
         if (status !== instance.status) {
@@ -290,6 +311,12 @@ export class InstanceManagerService {
             lastActivityAt: new Date().toISOString(),
             ...(status === 'connected' && { connectedAt: new Date().toISOString() }),
             ...(status === 'disconnected' && { disconnectedAt: new Date().toISOString() }),
+          });
+          
+          console.log('✅ [getConnectionStatus] Status updated in DB', {
+            instanceName: instance.instanceName,
+            oldStatus: instance.status,
+            newStatus: status,
           });
         }
 
@@ -300,7 +327,7 @@ export class InstanceManagerService {
         // If Evolution API is offline or instance not found
         if (error instanceof EvolutionAPIError) {
           if (isLastAttempt) {
-            console.warn('Failed to get connection status from Evolution API after retries', {
+            console.warn('⚠️ [getConnectionStatus] Failed after retries', {
               userId,
               instanceName: instance.instanceName,
               error: error.message,
@@ -315,11 +342,17 @@ export class InstanceManagerService {
         }
         
         // Unexpected error - throw immediately
+        console.error('❌ [getConnectionStatus] Unexpected error', {
+          userId,
+          instanceName: instance.instanceName,
+          error: error instanceof Error ? error.message : error,
+        });
         throw error;
       }
     }
 
     // Fallback (should never reach here)
+    console.warn('⚠️ [getConnectionStatus] Fallback to disconnected');
     return 'disconnected';
   }
 
