@@ -124,9 +124,8 @@ const ClientsPage: React.FC = () => {
       const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       
       if (diffDays > 90) {
-        // Se passar de 90 dias, ajustar automaticamente
-        matchesDate = client.attendanceDate >= dateFilterStart && 
-                     client.attendanceDate <= dateFilterStart;
+        // Se passar de 90 dias, não filtrar (mostrar aviso visual apenas)
+        matchesDate = true;
       } else {
         matchesDate = client.attendanceDate >= dateFilterStart && 
                      client.attendanceDate <= dateFilterEnd;
