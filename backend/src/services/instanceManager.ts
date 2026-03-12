@@ -116,7 +116,7 @@ export class InstanceManagerService {
         // Instance exists in both places - return existing instance
         return {
           instanceName: existingInstance.instanceName,
-          status: this.mapConnectionStateToStatus(connectionState.state),
+          status: this.mapConnectionStateToStatus(connectionState.instance.state),
           createdAt: existingInstance.createdAt,
         };
       } catch (error) {
@@ -293,11 +293,11 @@ export class InstanceManagerService {
           instance.instanceName
         );
 
-        const status = this.mapConnectionStateToStatus(connectionState.state);
+        const status = this.mapConnectionStateToStatus(connectionState.instance.state);
 
         console.log('🔄 [getConnectionStatus] Mapped status', {
           instanceName: instance.instanceName,
-          evolutionState: connectionState.state,
+          evolutionState: connectionState.instance.state,
           mappedStatus: status,
           currentDBStatus: instance.status,
           willUpdate: status !== instance.status,
