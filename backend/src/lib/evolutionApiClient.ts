@@ -21,10 +21,8 @@ export interface EvolutionInstance {
 }
 
 export interface ConnectionState {
-  instance: {
-    instanceName: string;
-    state: 'close' | 'connecting' | 'open';
-  };
+  instance: string;
+  state: 'close' | 'connecting' | 'open';
 }
 
 export interface WebhookConfig {
@@ -161,7 +159,7 @@ export class EvolutionAPIClient {
       
       console.log('📡 [getConnectionState] Response', {
         instanceName,
-        state: data.instance.state,
+        state: data.state,
         fullResponse: data,
       });
 

@@ -293,11 +293,11 @@ export class InstanceManagerService {
           instance.instanceName
         );
 
-        const status = this.mapConnectionStateToStatus(connectionState.instance.state);
+        const status = this.mapConnectionStateToStatus(connectionState.state);
 
         console.log('🔄 [getConnectionStatus] Mapped status', {
           instanceName: instance.instanceName,
-          evolutionState: connectionState.instance.state,
+          evolutionState: connectionState.state,
           mappedStatus: status,
           currentDBStatus: instance.status,
           willUpdate: status !== instance.status,
