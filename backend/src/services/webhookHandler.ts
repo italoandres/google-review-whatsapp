@@ -115,17 +115,36 @@ export class WebhookHandler {
     });
 
     try {
+      // Normalize event name to lowercase with dots for comparison
+      const normalizedEvent = payload.event.toLowerCase().replace(/_/g, '.');
+      
+      console.log('🔄 [handleEvent] Event normalization', {
+        originalEvent: payload.event,
+        normalizedEvent,
+        instanceName: payload.instance,
+      });
+      
       // Route to appropriate handler based on event type
-      switch (payload.event) {
+      switch (normalizedEvent) {
         case 'connection.update':
           return await this.handleConnectionUpdate(payload);
         
         case 'messages.upsert':
           return await this.handleMessageUpsert(payload);
         
+        case 'qrcode.updated':
+          // QR code events are handled by polling, just acknowledge
+          console.log('ℹ️ [handleEvent] QR code event received (handled by polling)', {
+            instanceName: payload.instance,
+          });
+          return {
+            success: true,
+            message: 'QR code event acknowledged',
+          };
+        
         default:
           // Log unknown event types but don't fail
-          console.warn(`Unknown webhook event type: ${payload.event}`);
+          console.warn(`Unknown webhook event type: ${payload.event} (normalized: ${normalizedEvent})`);
           return {
             success: true,
             message: `Event type ${payload.event} logged but not processed`,
