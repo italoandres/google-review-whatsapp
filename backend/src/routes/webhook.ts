@@ -71,9 +71,9 @@ router.post('/evolution', async (req: Request, res: Response) => {
     // Get signature from header
     const signature = req.headers['x-evolution-signature'] as string;
     
-    // TEMPORARY: Skip signature validation in development
-    // Evolution API may not send signature in some configurations
-    const skipSignatureValidation = process.env.NODE_ENV === 'development';
+    // TEMPORARY: Skip signature validation - Evolution API not sending signatures
+    // TODO: Configure Evolution API to send signatures and re-enable validation
+    const skipSignatureValidation = true; // Temporarily disabled for production
     
     if (!signature && !skipSignatureValidation) {
       // Log attempt with missing signature
