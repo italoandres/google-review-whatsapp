@@ -21,8 +21,10 @@ const PORT = config.app.port;
 
 // Middlewares globais
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Aumentar limite do body parser para aceitar webhooks com payloads grandes
+// Evolution API pode enviar mensagens com imagens/documentos que geram payloads grandes
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Log de requisições (desenvolvimento)
 if (process.env.NODE_ENV === 'development') {
