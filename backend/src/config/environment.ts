@@ -150,8 +150,24 @@ export function loadAndValidateConfig(): EnvironmentConfig {
     const encryptionKey = getRequiredEnv('ENCRYPTION_KEY');
     const evolutionApiUrl = getRequiredEnv('EVOLUTION_API_URL');
     const evolutionApiGlobalKey = getRequiredEnv('EVOLUTION_API_GLOBAL_KEY');
-    const backendUrl = getRequiredEnv('BACKEND_URL');
     const webhookSecret = getRequiredEnv('WEBHOOK_SECRET');
+    
+    // BACKEND_URL: Try explicit env var first, then construct from Railway domain
+    let backendUrl = process.env.BACKEND_URL?.trim();
+    
+    if (!backendUrl && process.env.RAILWAY_PUBLIC_DOMAIN) {
+      // Railway provides RAILWAY_PUBLIC_DOMAIN at runtime
+      backendUrl = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+      console.log(`🚂 Railway detected: Using domain ${backendUrl}`);
+    }
+    
+    if (!backendUrl) {
+      throw new ConfigurationError(
+        `Missing required environment variable: BACKEND_URL\n` +
+        `Please set BACKEND_URL in your .env file. See .env.example for reference.\n` +
+        `For Railway deployments, RAILWAY_PUBLIC_DOMAIN will be used automatically.`
+      );
+    }
     
     // Validate URLs
     validateUrl(supabaseUrl, 'SUPABASE_URL');
