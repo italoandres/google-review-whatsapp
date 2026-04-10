@@ -197,13 +197,15 @@ describe('Evolution API Client - Unit Tests', () => {
           ok: true,
           status: 200,
           json: async () => ({
-            instance: 'user-123',
-            state,
+            instance: {
+              instanceName: 'user-123',
+              state,
+            },
           }),
         });
 
         const result = await client.getConnectionState('user-123');
-        expect(result.state).toBe(state);
+        expect(result.instance.state).toBe(state);
 
         jest.clearAllMocks();
       }
@@ -264,10 +266,12 @@ describe('Evolution API Client - Unit Tests', () => {
   describe('setWebhook', () => {
     it('should set webhook successfully', async () => {
       const webhookConfig = {
-        url: 'https://backend.example.com/api/webhooks/evolution',
-        webhook_by_events: true,
-        webhook_base64: false,
-        events: ['messages.upsert', 'connection.update'],
+        webhook: {
+          url: 'https://backend.example.com/api/webhooks/evolution',
+          webhook_by_events: true,
+          webhook_base64: false,
+          events: ['messages.upsert', 'connection.update'],
+        },
       };
 
       const mockFetch = global.fetch as jest.Mock;
@@ -292,10 +296,12 @@ describe('Evolution API Client - Unit Tests', () => {
 
     it('should throw error when webhook configuration fails', async () => {
       const webhookConfig = {
-        url: 'https://backend.example.com/api/webhooks/evolution',
-        webhook_by_events: true,
-        webhook_base64: false,
-        events: ['messages.upsert'],
+        webhook: {
+          url: 'https://backend.example.com/api/webhooks/evolution',
+          webhook_by_events: true,
+          webhook_base64: false,
+          events: ['messages.upsert'],
+        },
       };
 
       const mockFetch = global.fetch as jest.Mock;

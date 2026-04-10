@@ -429,6 +429,117 @@ export class InstanceManagerService {
   }
 
   /**
+   * Forces reconnection of WhatsApp instance by logging out and restarting
+   * This is useful when QR code is not available or instance is stuck
+   * 
+   * @param userId - ID of the authenticated user
+   * @returns New QR code in base64 format
+   * @throws QRCodeNotAvailableError if QR code cannot be generated
+   * 
+   * Validates: Requirements 1.4, 2.4, 2.5
+   */
+  async forceReconnect(userId: string): Promise<string> {
+    // Get instance from database
+    const instance = await getWhatsAppInstanceByUserId(userId);
+    
+    if (!instance) {
+      throw new QRCodeNotAvailableError('No instance found for user');
+    }
+
+    console.log('🔄 [forceReconnect] Starting force reconnect', {
+      userId,
+      instanceName: instance.instanceName,
+      currentStatus: instance.status,
+    });
+
+    try {
+      // Step 1: Force logout to clear any stuck state
+      console.log('🔄 [forceReconnect] Step 1: Forcing logout', {
+        instanceName: instance.instanceName,
+      });
+      
+      await this.evolutionClient.logoutInstance(instance.instanceName);
+      
+      console.log('✅ [forceReconnect] Logout successful', {
+        instanceName: instance.instanceName,
+      });
+    } catch (error) {
+      // Log error but continue - logout might fail if instance is already disconnected
+      console.warn('⚠️ [forceReconnect] Logout failed (continuing anyway)', {
+        instanceName: instance.instanceName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+
+    // Step 2: Wait 2 seconds for Evolution API to process logout
+    console.log('⏳ [forceReconnect] Step 2: Waiting 2 seconds', {
+      instanceName: instance.instanceName,
+    });
+    
+    await this.sleep(2000);
+
+    // Step 3: Update status to connecting
+    await updateWhatsAppInstance(userId, {
+      status: 'connecting',
+      lastActivityAt: new Date().toISOString(),
+    });
+
+    // Step 4: Try to get new QR code
+    console.log('🔄 [forceReconnect] Step 3: Attempting to get new QR code', {
+      instanceName: instance.instanceName,
+    });
+
+    try {
+      const qrCode = await this.getQRCode(userId);
+      
+      console.log('✅ [forceReconnect] QR code obtained successfully', {
+        instanceName: instance.instanceName,
+      });
+      
+      return qrCode;
+    } catch (error) {
+      // If getQRCode fails, try restarting the instance as fallback
+      console.warn('⚠️ [forceReconnect] QR code fetch failed, trying restart', {
+        instanceName: instance.instanceName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      try {
+        console.log('🔄 [forceReconnect] Step 4 (fallback): Restarting instance', {
+          instanceName: instance.instanceName,
+        });
+        
+        await this.evolutionClient.restartInstance(instance.instanceName);
+        
+        console.log('✅ [forceReconnect] Restart successful', {
+          instanceName: instance.instanceName,
+        });
+
+        // Wait 2 seconds after restart
+        await this.sleep(2000);
+
+        // Try to get QR code again
+        const qrCode = await this.getQRCode(userId);
+        
+        console.log('✅ [forceReconnect] QR code obtained after restart', {
+          instanceName: instance.instanceName,
+        });
+        
+        return qrCode;
+      } catch (restartError) {
+        console.error('❌ [forceReconnect] Force reconnect failed completely', {
+          instanceName: instance.instanceName,
+          error: restartError instanceof Error ? restartError.message : 'Unknown error',
+        });
+        
+        throw new QRCodeNotAvailableError(
+          'Failed to force reconnect and generate QR code. Please try again later.'
+        );
+      }
+    }
+  }
+
+  /**
    * Generates instance name in format "user-{userId}"
    * 
    * @param userId - User ID

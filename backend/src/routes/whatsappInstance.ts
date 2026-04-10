@@ -18,6 +18,10 @@ import {
   RateLimitError,
 } from '../services/instanceManager';
 import { getWhatsAppInstanceByUserId } from '../models/whatsappInstance';
+import { 
+  incrementRateLimit, 
+  isRateLimited as checkRateLimit 
+} from '../models/rateLimitRecord';
 
 const router = Router();
 const instanceManager = new InstanceManagerService();
@@ -349,6 +353,105 @@ router.post('/reconnect', authMiddleware, async (req: Request, res: Response) =>
 
     // Unexpected error
     console.error('Unexpected error in reconnect:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'An unexpected error occurred',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+});
+
+/**
+ * POST /api/evolution/force-reconnect
+ * Forces reconnection of the user's WhatsApp instance
+ * Uses logout and restart to regenerate QR code when instance is stuck
+ * 
+ * Authentication: Required (Bearer token)
+ * Rate Limit: 3 requests / minute per user
+ * 
+ * Response:
+ * - 200: New QR code generated
+ * - 401: Unauthorized
+ * - 404: Instance not found
+ * - 429: Rate limit exceeded
+ * - 500: Internal server error
+ * 
+ * Validates: Requirements 2.4, 2.5
+ */
+router.post('/force-reconnect', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).json({
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not authenticated',
+          timestamp: new Date().toISOString(),
+        },
+      });
+      return;
+    }
+
+    // Check rate limit (3 requests per minute)
+    const rateLimitCheck = await checkRateLimit(
+      userId,
+      'force-reconnect',
+      3 // max 3 requests
+    );
+
+    if (rateLimitCheck.limited) {
+      const resetTime = new Date(rateLimitCheck.resetTime!);
+      const now = new Date();
+      const retryAfter = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+      
+      res.status(429)
+        .set('Retry-After', retryAfter.toString())
+        .json({
+          error: {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many force reconnect requests. Please wait before trying again.',
+            details: {
+              retryAfter,
+              limit: 3,
+              window: '1 minute',
+            },
+            timestamp: new Date().toISOString(),
+          },
+        });
+      return;
+    }
+
+    // Increment rate limit counter
+    await incrementRateLimit({
+      userId,
+      endpoint: 'force-reconnect',
+      windowDurationMs: 60000, // 1 minute
+    });
+
+    // Force reconnect instance
+    const qrCode = await instanceManager.forceReconnect(userId);
+
+    res.json({
+      qrCode,
+      message: 'Instance force reconnected. Please scan the new QR code.',
+    });
+  } catch (error) {
+    if (error instanceof QRCodeNotAvailableError) {
+      res.status(404).json({
+        error: {
+          code: 'QR_CODE_NOT_AVAILABLE',
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      return;
+    }
+
+    // Unexpected error
+    console.error('Unexpected error in force-reconnect:', error);
     res.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',

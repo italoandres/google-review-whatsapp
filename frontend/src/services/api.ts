@@ -231,6 +231,11 @@ export const whatsappApi = {
     const response = await api.post<ReconnectResponse>('/evolution/reconnect');
     return response.data;
   },
+
+  forceReconnect: async (): Promise<ReconnectResponse> => {
+    const response = await api.post<ReconnectResponse>('/evolution/force-reconnect');
+    return response.data;
+  },
 };
 
 export default api;

@@ -197,7 +197,7 @@ const WhatsAppConnectionPage: React.FC = () => {
         setQrCodeRetryAttempt(0); // Reset counter
 
         if (axiosError.response?.status === 404) {
-          setErrorMessage('QR Code não disponível após várias tentativas. Tente novamente.');
+          setErrorMessage('QR Code não disponível após várias tentativas. Clique em "Forçar Reconexão" para tentar novamente.');
         } else if (axiosError.response?.status === 429) {
           setErrorMessage('Limite de tentativas excedido. Aguarde alguns minutos.');
         } else {
@@ -207,6 +207,40 @@ const WhatsAppConnectionPage: React.FC = () => {
         setPageStatus('error');
         return;
       }
+    }
+  };
+
+  const handleForceReconnect = async () => {
+    setErrorMessage(null);
+    setPageStatus('creating');
+    setQrCodeRetryAttempt(0);
+    stopPolling();
+
+    try {
+      const response = await whatsappApi.forceReconnect();
+      setQrCode(response.qrCode);
+      setConnectionInfo({
+        instanceName: response.instanceName,
+      });
+      setPageStatus('waiting_scan');
+      setConnectionStatus('connecting');
+      startPolling();
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorData = axiosError.response?.data;
+      
+      let message = 'Erro ao forçar reconexão WhatsApp';
+      
+      if (axiosError.response?.status === 429) {
+        message = 'Limite de tentativas excedido. Aguarde alguns minutos e tente novamente.';
+      } else if (axiosError.response?.status === 404) {
+        message = 'QR Code não disponível. Tente criar uma nova instância.';
+      } else if (errorData?.message) {
+        message = errorData.message;
+      }
+      
+      setErrorMessage(message);
+      setPageStatus('error');
     }
   };
 
@@ -233,27 +267,6 @@ const WhatsAppConnectionPage: React.FC = () => {
       const axiosError = error as AxiosError<ErrorResponse>;
       const errorData = axiosError.response?.data;
       setErrorMessage(errorData?.message || 'Erro ao desconectar WhatsApp');
-    }
-  };
-
-  const handleReconnect = async () => {
-    setErrorMessage(null);
-    setPageStatus('creating');
-
-    try {
-      const response = await whatsappApi.reconnect();
-      setQrCode(response.qrCode);
-      setConnectionInfo({
-        instanceName: response.instanceName,
-      });
-      setPageStatus('waiting_scan');
-      setConnectionStatus('connecting');
-      startPolling();
-    } catch (error) {
-      const axiosError = error as AxiosError<ErrorResponse>;
-      const errorData = axiosError.response?.data;
-      setErrorMessage(errorData?.message || 'Erro ao reconectar WhatsApp');
-      setPageStatus('error');
     }
   };
 
@@ -376,10 +389,16 @@ const WhatsAppConnectionPage: React.FC = () => {
                 Verificar Status
               </button>
               <button
-                onClick={handleConnect}
+                onClick={handleForceReconnect}
                 className="btn btn-primary"
               >
-                Tentar Novamente
+                Forçar Reconexão
+              </button>
+              <button
+                onClick={handleConnect}
+                className="btn btn-secondary"
+              >
+                Criar Nova Instância
               </button>
               <button
                 onClick={() => {

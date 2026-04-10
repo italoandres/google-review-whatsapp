@@ -126,7 +126,30 @@ export class EvolutionAPIClient {
       }
 
       const data = await response.json() as any;
-      return data.base64 || data.qrcode?.base64;
+      
+      // Extract QR code from response (supports two formats)
+      const qrCode = data.base64 || data.qrcode?.base64;
+      
+      // Validate QR code is present and not null/undefined
+      if (!qrCode || qrCode === null || qrCode === undefined) {
+        // Log response for debugging
+        console.error('❌ [getQRCode] QR Code not available in response', {
+          instanceName,
+          responseBody: JSON.stringify(data),
+          hasBase64: 'base64' in data,
+          base64Value: data.base64,
+          hasQrcodeObject: 'qrcode' in data,
+          qrcodeBase64Value: data.qrcode?.base64,
+          count: data.count,
+        });
+        
+        throw new EvolutionAPIError(
+          'QR Code not available',
+          404
+        );
+      }
+      
+      return qrCode;
     });
   }
 
@@ -186,6 +209,54 @@ export class EvolutionAPIClient {
       if (!response.ok && response.status !== 404) {
         throw new EvolutionAPIError(
           `Failed to delete instance: ${response.statusText}`,
+          response.status
+        );
+      }
+    });
+  }
+
+  /**
+   * Logs out an instance from WhatsApp
+   * This forces the instance to disconnect and clear its session
+   * @param instanceName - Name of the instance to logout
+   */
+  async logoutInstance(instanceName: string): Promise<void> {
+    return this.executeWithRetry(async () => {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/instance/logout/${instanceName}`,
+        {
+          method: 'DELETE',
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok && response.status !== 404) {
+        throw new EvolutionAPIError(
+          `Failed to logout instance: ${response.statusText}`,
+          response.status
+        );
+      }
+    });
+  }
+
+  /**
+   * Restarts an instance
+   * This can help regenerate QR code when instance is stuck
+   * @param instanceName - Name of the instance to restart
+   */
+  async restartInstance(instanceName: string): Promise<void> {
+    return this.executeWithRetry(async () => {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/instance/restart/${instanceName}`,
+        {
+          method: 'PUT',
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new EvolutionAPIError(
+          `Failed to restart instance: ${response.statusText}`,
           response.status
         );
       }

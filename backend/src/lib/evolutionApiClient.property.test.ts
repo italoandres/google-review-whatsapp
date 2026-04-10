@@ -120,16 +120,18 @@ describe('Property Tests - Evolution API Client', () => {
               ok: true,
               status: 200,
               json: async () => ({
-                instance: instanceName,
-                state: 'open',
+                instance: {
+                  instanceName,
+                  state: 'open',
+                },
               }),
             });
 
             const result = await client.getConnectionState(instanceName);
 
             // Should succeed
-            expect(result.instance).toBe(instanceName);
-            expect(result.state).toBe('open');
+            expect(result.instance.instanceName).toBe(instanceName);
+            expect(result.instance.state).toBe('open');
 
             // Should have been called only once (no retries needed)
             expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -166,8 +168,10 @@ describe('Property Tests - Evolution API Client', () => {
                 ok: true,
                 status: 200,
                 json: async () => ({
-                  instance: instanceName,
-                  state: 'open',
+                  instance: {
+                    instanceName,
+                    state: 'open',
+                  },
                 }),
               });
             });
@@ -175,8 +179,8 @@ describe('Property Tests - Evolution API Client', () => {
             const result = await client.getConnectionState(instanceName);
 
             // Should eventually succeed
-            expect(result.instance).toBe(instanceName);
-            expect(result.state).toBe('open');
+            expect(result.instance.instanceName).toBe(instanceName);
+            expect(result.instance.state).toBe('open');
 
             // Should have been called failureCount + 1 times
             expect(mockFetch).toHaveBeenCalledTimes(failureCount + 1);
