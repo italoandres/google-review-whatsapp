@@ -137,6 +137,14 @@ export class InstanceManagerService {
         webhookUrl
       );
 
+      // CRITICAL: Wait for QR code generation
+      // Evolution API v2.1.1 needs time to generate QR code after instance creation
+      console.log('⏳ [createInstance] Waiting 5 seconds for QR code generation...', {
+        userId,
+        instanceName,
+      });
+      await this.sleep(5000);
+
       // Configure webhook (non-blocking - failure doesn't fail instance creation)
       try {
         await this.evolutionClient.setWebhook(instanceName, {
